@@ -146,29 +146,45 @@ function setupNav() {
 }
 
 function showMainApp() {
+  console.log("showMainApp called, currentUser =", currentUser);
+
   var loginScreen = document.getElementById("login-screen");
   var mainApp = document.getElementById("main-app");
   var usernameDisplay = document.getElementById("nav-username");
 
-  if (loginScreen) loginScreen.classList.remove("active");
-  if (mainApp) mainApp.classList.add("active");
+  // Hard override of visibility using inline styles
+  if (loginScreen) {
+    loginScreen.style.display = "none";
+  }
+  if (mainApp) {
+    // If your main app layout uses flex, you can do "flex" instead
+    mainApp.style.display = "block";
+  }
+
   if (usernameDisplay && currentUser) {
     usernameDisplay.textContent = currentUser.username;
   }
 
-  // Default to Brain view
+  // Still set the initial view to Brain
   setActiveTab("brain");
   setActiveView("brain");
-
   refreshBrainAssignedList();
 }
 
 function showLoginScreen() {
+  console.log("showLoginScreen called");
+
   var loginScreen = document.getElementById("login-screen");
   var mainApp = document.getElementById("main-app");
-  if (mainApp) mainApp.classList.remove("active");
-  if (loginScreen) loginScreen.classList.add("active");
+
+  if (mainApp) {
+    mainApp.style.display = "none";
+  }
+  if (loginScreen) {
+    loginScreen.style.display = "block";
+  }
 }
+
 
 function setActiveView(viewName) {
   var views = document.querySelectorAll(".view");

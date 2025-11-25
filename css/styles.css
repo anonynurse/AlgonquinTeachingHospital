@@ -64,9 +64,12 @@ body {
   text-align: center;
 }
 
+/* Main logo on login – ~25% of viewport width, with sane limits */
 .logo {
-  width: 140px;
-  max-width: 100%;
+  width: 25vw;
+  max-width: 220px;
+  min-width: 110px;
+  height: auto;
   margin-bottom: 1rem;
 }
 
@@ -153,6 +156,8 @@ button {
 #main-app {
   flex-direction: column;
   background: var(--bg);
+  flex: 1;
+  min-height: 100vh; /* Make sure the main app fills the screen on phone */
 }
 
 /* BRAND BAR ABOVE TABS */
@@ -168,6 +173,7 @@ button {
   gap: 0.5rem;
 }
 
+/* Smaller logo in brand bar */
 .brand-logo {
   height: 28px;
   width: auto;
@@ -282,6 +288,8 @@ button {
   flex: 1;
   padding: 1rem;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .view {
@@ -296,6 +304,13 @@ button {
   margin-top: 0;
 }
 
+/* Make patient list view flex to fill available height */
+#view-patient-list.view.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 /* PATIENT LIST TABLE */
 .table-wrapper {
   background: #ffffff;
@@ -303,6 +318,8 @@ button {
   box-shadow: var(--shadow-soft);
   padding: 0.5rem;
   overflow-x: auto;
+  flex: 1;        /* Take remaining vertical space */
+  min-height: 0;  /* Allow flex child to shrink if needed */
 }
 
 .patient-table {

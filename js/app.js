@@ -6,12 +6,18 @@ const openPatientTabs = new Map(); // patientNumber -> tab element
 const patientCharts = new Map();   // patientNumber -> chart JSON
 let currentUser = null;            // { username, role }
 
+// Drug manual state
+let drugsList = [];                // from data/drugs/drugs.json
+const drugDetails = new Map();     // id -> drug JSON
+const openDrugTabs = new Map();    // id -> tab element
+
 /* ---------- UTIL ---------- */
 
 function escapeHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
@@ -39,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLogin();
   setupNav();
   loadPatients();
+  loadDrugs();
   restoreSessionIfExists();
 });
 
@@ -77,15 +84,30 @@ function setupNav() {
     logoutBtn.addEventListener("click", () => {
       Auth.logout();
       currentUser = null;
-      // Clear in-memory state
+
+      // Clear in-memory patient/drug state
       patientCharts.clear();
       openPatientTabs.clear();
-      // Clear patient tab DOM
-      const tabBar = document.getElementById("patient-tab-bar");
-      if (tabBar) tabBar.innerHTML = "";
+      drugsList = [];
+      drugDetails.clear();
+      openDrugTabs.clear();
+
+      // Clear patient and drug tab DOM
+      const ptTabBar = document.getElementById("patient-tab-bar");
+      if (ptTabBar) ptTabBar.innerHTML = "";
+
+      const drugTabBar = document.getElementById("drug-tab-bar");
+      if (drugTabBar) drugTabBar.innerHTML = "";
+
+      const drugDetail = document.getElementById("drug-detail-content");
+      if (drugDetail) {
+        drugDetail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
+      }
 
       showLoginScreen();
       refreshBrainAssignedList();
+      // Reload drugs list fresh next time we show the main app
+      loadDrugs();
     });
   }
 
@@ -120,17 +142,25 @@ function showMainApp(user) {
   if (mainApp) mainApp.classList.add("active");
   if (usernameDisplay) usernameDisplay.textContent = user.username;
 
-  // Start each login fresh: Brain view, no patient tabs open
+  // Fresh session visual state
   setActiveView("brain");
   setActiveTab("brain");
 
-  // Ensure tab bar is empty at login
-  const tabBar = document.getElementById("patient-tab-bar");
-  if (tabBar) tabBar.innerHTML = "";
+  // Clear patient tabs and charts at login
+  const ptTabBar = document.getElementById("patient-tab-bar");
+  if (ptTabBar) ptTabBar.innerHTML = "";
   openPatientTabs.clear();
   patientCharts.clear();
 
+  // Reset brain & drug detail display
   refreshBrainAssignedList();
+  const drugDetail = document.getElementById("drug-detail-content");
+  if (drugDetail) {
+    drugDetail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
+  }
+
+  // Ensure drugs list is rendered if we already loaded it
+  renderDrugList();
 }
 
 function showLoginScreen() {
@@ -247,9 +277,11 @@ function openPatientTab(patientNumber) {
     tabEl.className = "patient-tab";
     tabEl.dataset.patientNumber = patientNumber;
     tabEl.innerHTML = `
-      <span class="patient-tab-label">${patient.lastName}, ${patient.firstName}</span>
+      <span class="patient-tab-label">${escapeHtml(
+        patient.lastName
+      )}, ${escapeHtml(patient.firstName)}</span>
       <span class="tab-close" aria-label="Close tab">&times;</span>
-    `;
+    ";
 
     tabEl.addEventListener("click", (e) => {
       if (e.target.closest(".tab-close")) {
@@ -264,7 +296,7 @@ function openPatientTab(patientNumber) {
     openPatientTabs.set(patientNumber, tabEl);
   }
 
-  // DO NOT auto-activate; user must click the tab itself.
+  // Do NOT auto-activate when row clicked
 }
 
 function activatePatientTab(patientNumber) {
@@ -322,8 +354,14 @@ async function loadAndRenderPatientChart(patientNumber) {
     chart = buildFallbackChartFromCsv(summaryRow);
   }
 
+  if (!chart) return;
   if (!chart.assignedNurses) chart.assignedNurses = [];
-  if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
+  if (!chart.medications)
+    chart.medications = { activeOrders: [], mar: [] };
+  if (!chart.demographics)
+    chart.demographics = buildFallbackChartFromCsv(summaryRow).demographics;
+  if (!chart.demographics.precautions)
+    chart.demographics.precautions = "None documented";
 
   patientCharts.set(patientNumber, chart);
 
@@ -343,9 +381,10 @@ function buildFallbackChartFromCsv(row) {
       dateOfBirth: row.dob,
       age: Number(row.age),
       weightKg: Number(row.weight),
-      allergies: row.allergies,
+      allergies: row.allergies || "No Known Allergies",
       unit: "",
       room: "",
+      precautions: "None documented",
     },
     diagnoses: [],
     orders: [],
@@ -378,7 +417,6 @@ function toggleAssignment(patientNumber) {
   }
 
   patientCharts.set(patientNumber, chart);
-
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
@@ -413,7 +451,9 @@ function refreshBrainAssignedList() {
   const rows = assigned
     .map((chart) => {
       const d = chart.demographics || {};
-      const name = `${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}`;
+      const name = `${(d.lastName || "").toUpperCase()}, ${
+        d.firstName || ""
+      }`;
       const unit = d.unit || "";
       const room = d.room || "";
       return `
@@ -455,7 +495,7 @@ function refreshBrainAssignedList() {
   });
 }
 
-/* ---------- PATIENT DETAIL RENDERING (ADMIN EDIT + EXPORT) ---------- */
+/* ---------- PATIENT DETAIL RENDERING + INTERNAL TABS ---------- */
 
 function renderPatientDetail(chart) {
   if (!chart) return;
@@ -544,7 +584,9 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-first-name" value="${escapeHtml(firstName)}">`
+                  ? `<input id="edit-first-name" value="${escapeHtml(
+                      firstName
+                    )}">`
                   : escapeHtml(firstName)
               }
             </div>
@@ -555,7 +597,9 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-last-name" value="${escapeHtml(lastName)}">`
+                  ? `<input id="edit-last-name" value="${escapeHtml(
+                      lastName
+                    )}">`
                   : escapeHtml(lastName)
               }
             </div>
@@ -588,7 +632,9 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
+                  ? `<input id="edit-weight" type="number" step="0.1" value="${
+                      d.weightKg ?? ""
+                    }">`
                   : weight
               }
             </div>
@@ -610,8 +656,12 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-allergies" value="${escapeHtml(allergies)}">`
-                  : `<span class="banner-allergies">${escapeHtml(allergies)}</span>`
+                  ? `<input id="edit-allergies" value="${escapeHtml(
+                      allergies
+                    )}">`
+                  : `<span class="banner-allergies">${escapeHtml(
+                      allergies
+                    )}</span>`
               }
             </div>
           </div>
@@ -621,8 +671,12 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-precautions" value="${escapeHtml(precautions)}">`
-                  : `<span class="banner-precautions">${escapeHtml(precautions)}</span>`
+                  ? `<input id="edit-precautions" value="${escapeHtml(
+                      precautions
+                    )}">`
+                  : `<span class="banner-precautions">${escapeHtml(
+                      precautions
+                    )}</span>`
               }
             </div>
           </div>
@@ -654,7 +708,9 @@ function renderPatientDetail(chart) {
             <div class="info-value">
               ${
                 isAdmin
-                  ? `<input id="edit-primary-dx" value="${escapeHtml(primaryDx || "")}">`
+                  ? `<input id="edit-primary-dx" value="${escapeHtml(
+                      primaryDx || ""
+                    )}">`
                   : escapeHtml(primaryDx)
               }
             </div>
@@ -667,7 +723,9 @@ function renderPatientDetail(chart) {
 
           <div class="info-item">
             <div class="info-label">MAR Entries</div>
-            <div class="info-value">${(chart.medications?.mar || []).length}</div>
+            <div class="info-value">${
+              (chart.medications?.mar || []).length
+            }</div>
           </div>
         </section>
 
@@ -788,3 +846,247 @@ function renderPatientDetail(chart) {
   }
 }
 
+/* ---------- DRUG MANUAL: LOAD & LIST ---------- */
+
+async function loadDrugs() {
+  try {
+    const res = await fetch("data/drugs/drugs.json");
+    if (!res.ok) {
+      console.error("Failed to load drugs.json", res.status);
+      return;
+    }
+    const data = await res.json();
+    // Sort alphabetically by name
+    drugsList = (data || []).slice().sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    renderDrugList();
+  } catch (err) {
+    console.error("Error loading drug manifest", err);
+  }
+}
+
+function renderDrugList() {
+  const container = document.getElementById("drug-list");
+  if (!container) return;
+
+  if (!drugsList || drugsList.length === 0) {
+    container.innerHTML = `<p class="muted">No drugs loaded.</p>`;
+    return;
+  }
+
+  container.innerHTML = drugsList
+    .map(
+      (d) => `
+      <button class="drug-list-item" data-drug-id="${d.id}">
+        ${escapeHtml(d.name)}
+      </button>
+    `
+    )
+    .join("");
+
+  container.querySelectorAll(".drug-list-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.drugId;
+      if (!id) return;
+      openDrugTab(id);
+      activateDrugTab(id);
+    });
+  });
+}
+
+/* ---------- DRUG TABS (INSIDE DRUG MANUAL VIEW) ---------- */
+
+function openDrugTab(drugId) {
+  const drug = drugsList.find((d) => d.id === drugId);
+  if (!drug) return;
+
+  const tabBar = document.getElementById("drug-tab-bar");
+  if (!tabBar) return;
+
+  if (!openDrugTabs.has(drugId)) {
+    const tabEl = document.createElement("button");
+    tabEl.className = "drug-tab";
+    tabEl.dataset.drugId = drugId;
+    tabEl.innerHTML = `
+      <span class="drug-tab-label">${escapeHtml(drug.name)}</span>
+      <span class="drug-tab-close" aria-label="Close tab">&times;</span>
+    `;
+
+    tabEl.addEventListener("click", (e) => {
+      if (e.target.closest(".drug-tab-close")) {
+        e.stopPropagation();
+        closeDrugTab(drugId);
+      } else {
+        activateDrugTab(drugId);
+      }
+    });
+
+    tabBar.appendChild(tabEl);
+    openDrugTabs.set(drugId, tabEl);
+  }
+}
+
+function activateDrugTab(drugId) {
+  for (const [id, el] of openDrugTabs.entries()) {
+    if (id === drugId) {
+      el.classList.add("active");
+    } else {
+      el.classList.remove("active");
+    }
+  }
+
+  loadAndRenderDrug(drugId);
+}
+
+function closeDrugTab(drugId) {
+  const tabEl = openDrugTabs.get(drugId);
+  if (!tabEl) return;
+
+  const isActive = tabEl.classList.contains("active");
+  tabEl.remove();
+  openDrugTabs.delete(drugId);
+
+  const detail = document.getElementById("drug-detail-content");
+  if (!detail) return;
+
+  if (isActive) {
+    const remaining = Array.from(openDrugTabs.keys());
+    if (remaining.length > 0) {
+      const last = remaining[remaining.length - 1];
+      activateDrugTab(last);
+    } else {
+      detail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
+    }
+  }
+}
+
+/* ---------- LOAD & RENDER SINGLE DRUG ---------- */
+
+async function loadAndRenderDrug(drugId) {
+  if (!drugId) return;
+
+  let drug = drugDetails.get(drugId);
+  if (!drug) {
+    try {
+      const res = await fetch(`data/drugs/${drugId}.json`);
+      if (!res.ok) {
+        console.error("Failed to load drug file for", drugId, res.status);
+        return;
+      }
+      drug = await res.json();
+      drugDetails.set(drugId, drug);
+    } catch (err) {
+      console.error("Error loading drug JSON", err);
+      return;
+    }
+  }
+
+  renderDrugDetail(drug);
+}
+
+function renderDrugDetail(drug) {
+  const container = document.getElementById("drug-detail-content");
+  if (!container) return;
+
+  const name = drug.name || "";
+  const klass = drug.class || "";
+  const summary = drug.summary || "";
+  const indications = drug.indications || [];
+  const sideEffects = drug.sideEffects || [];
+  const cautions = drug.cautions || [];
+  const compatibility = drug.compatibility || {};
+  const standardDose = drug.standardDose || "See institutional guidelines.";
+  const minSafe = drug.minSafeDoseMgPerKgPerDay;
+  const maxSafe = drug.maxSafeDoseMgPerKgPerDay;
+
+  container.innerHTML = `
+    <div class="drug-card">
+      <h3 class="drug-name">${escapeHtml(name)}</h3>
+      <p class="drug-class">${escapeHtml(klass)}</p>
+
+      <section class="drug-section">
+        <h4>Summary</h4>
+        <p>${escapeHtml(summary)}</p>
+      </section>
+
+      <section class="drug-section">
+        <h4>Indications</h4>
+        ${
+          indications.length
+            ? `<ul>${indications
+                .map((i) => `<li>${escapeHtml(i)}</li>`)
+                .join("")}</ul>`
+            : `<p class="muted">No indications listed.</p>`
+        }
+      </section>
+
+      <section class="drug-section">
+        <h4>Side Effects</h4>
+        ${
+          sideEffects.length
+            ? `<ul>${sideEffects
+                .map((s) => `<li>${escapeHtml(s)}</li>`)
+                .join("")}</ul>`
+            : `<p class="muted">No side effects listed.</p>`
+        }
+      </section>
+
+      <section class="drug-section">
+        <h4>Cautions</h4>
+        ${
+          cautions.length
+            ? `<ul>${cautions
+                .map((c) => `<li>${escapeHtml(c)}</li>`)
+                .join("")}</ul>`
+            : `<p class="muted">No cautions listed.</p>`
+        }
+      </section>
+
+      <section class="drug-section">
+        <h4>Compatibility</h4>
+        <ul>
+          ${
+            compatibility.iv
+              ? `<li><strong>IV:</strong> ${escapeHtml(compatibility.iv)}</li>`
+              : ""
+          }
+          ${
+            compatibility.oral
+              ? `<li><strong>Oral:</strong> ${escapeHtml(
+                  compatibility.oral
+                )}</li>`
+              : ""
+          }
+          ${
+            compatibility.other
+              ? `<li><strong>Other:</strong> ${escapeHtml(
+                  compatibility.other
+                )}</li>`
+              : ""
+          }
+        </ul>
+      </section>
+
+      <section class="drug-section">
+        <h4>Dosing (Educational Only)</h4>
+        <p><strong>Standard order example:</strong> ${escapeHtml(
+          standardDose
+        )}</p>
+        <p class="muted">
+          Min/Max mg/kg/day are intentionally left null here and should be filled
+          from a trusted institutional or pharmacology reference when you build
+          scenarios.
+        </p>
+        <ul>
+          <li><strong>Min safe (mg/kg/day):</strong> ${
+            minSafe != null ? minSafe : "–"
+          }</li>
+          <li><strong>Max safe (mg/kg/day):</strong> ${
+            maxSafe != null ? maxSafe : "–"
+          }</li>
+        </ul>
+      </section>
+    </div>
+  `;
+}

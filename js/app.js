@@ -189,6 +189,8 @@ async function loadPatients() {
     const text = await res.text();
     patientsData = parsePatientsCsv(text);
     renderPatientList();
+    // After patientsData exists, refresh brain list (in case user already logged in)
+    refreshBrainAssignedList();
   } catch (err) {
     console.error("Error loading patients.csv", err);
   }
@@ -267,8 +269,8 @@ function openPatientTab(patientNumber) {
     `;
 
     tabEl.addEventListener("click", (e) => {
-      const target = e.target;
-      if (target.classList.contains("tab-close")) {
+      // Use closest so clicks right on or near the X work reliably
+      if (e.target.closest(".tab-close")) {
         e.stopPropagation();
         closePatientTab(patientNumber);
       } else {
@@ -382,7 +384,7 @@ function buildFallbackChartFromCsv(row) {
 function toggleAssignment(patientNumber) {
   if (!currentUser) return;
 
-  const chart = patientCharts.get(patientNumber);
+  const chart = patientCharts.get(patientNumber) || loadChartFromLocal(patientNumber);
   if (!chart) return;
 
   if (!Array.isArray(chart.assignedNurses)) {
@@ -399,6 +401,8 @@ function toggleAssignment(patientNumber) {
   }
 
   saveChartToLocal(chart);
+  patientCharts.set(patientNumber, chart);
+
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
@@ -414,14 +418,25 @@ function refreshBrainAssignedList() {
     return;
   }
 
+  if (!patientsData || patientsData.length === 0) {
+    container.innerHTML = `<p class="muted">Loading patients...</p>`;
+    return;
+  }
+
   const assigned = [];
 
-  for (const chart of patientCharts.values()) {
-    if (
-      Array.isArray(chart.assignedNurses) &&
-      chart.assignedNurses.includes(currentUser.username)
-    ) {
-      assigned.push(chart);
+  // IMPORTANT CHANGE:
+  // Look at ALL patients, pulling from localStorage if needed,
+  // so assignments persist across logins on this device.
+  for (const p of patientsData) {
+    const pn = p.patientNumber;
+    let chart = patientCharts.get(pn) || loadChartFromLocal(pn);
+    if (!chart) continue;
+
+    if (!Array.isArray(chart.assignedNurses)) continue;
+
+    if (chart.assignedNurses.includes(currentUser.username)) {
+      assigned.push({ chart, summary: p });
     }
   }
 
@@ -431,9 +446,11 @@ function refreshBrainAssignedList() {
   }
 
   const rows = assigned
-    .map((chart) => {
+    .map(({ chart, summary }) => {
       const d = chart.demographics || {};
-      const name = `${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}`;
+      const name = `${(d.lastName || summary.lastName || "").toUpperCase()}, ${
+        d.firstName || summary.firstName || ""
+      }`;
       const unit = d.unit || "";
       const room = d.room || "";
       return `
@@ -643,7 +660,6 @@ function renderPatientDetail(chart) {
     }
   `;
 
-  // Assign button
   const assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", () => {

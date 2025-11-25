@@ -3,8 +3,8 @@ import { Auth } from "./auth.js";
 
 let patientsData = [];                     // from patients.csv
 const openPatientTabs = new Map();         // patientNumber -> tab element
-const patientCharts = new Map();           // patientNumber -> full chart JSON (with runtime fields)
-let currentUser = null;                    // { username, role, ... }
+const patientCharts = new Map();           // patientNumber -> full chart JSON
+let currentUser = null;                    // { username, role }
 
 const PATIENT_STORAGE_PREFIX = "adh_patient_chart_";
 
@@ -16,7 +16,8 @@ function loadChartFromLocal(patientNumber) {
   if (!raw) return null;
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (e) {
+    console.warn("Failed to parse local chart for", patientNumber, e);
     return null;
   }
 }
@@ -24,16 +25,18 @@ function loadChartFromLocal(patientNumber) {
 function saveChartToLocal(chart) {
   if (!chart || !chart.patientNumber) return;
   const key = PATIENT_STORAGE_PREFIX + chart.patientNumber;
-  localStorage.setItem(key, JSON.stringify(chart));
+  try {
+    localStorage.setItem(key, JSON.stringify(chart));
+  } catch (e) {
+    console.error("Failed to save chart to localStorage", e);
+  }
 }
-
-/* ---------- EXPORT HELPER ---------- */
 
 function exportChartAsJson(chart) {
   if (!chart) return;
   const filename = `${chart.patientNumber || "patient"}.json`;
   const blob = new Blob([JSON.stringify(chart, null, 2)], {
-    type: "application/json",
+    type: "application/json"
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -56,6 +59,8 @@ function escapeHtml(str = "") {
     .replace(/'/g, "&#39;");
 }
 
+/* ---------- ENTRY POINT ---------- */
+
 document.addEventListener("DOMContentLoaded", () => {
   Auth.init();
   setupLogin();
@@ -70,9 +75,11 @@ function setupLogin() {
   const loginForm = document.getElementById("login-form");
   const errorEl = document.getElementById("login-error");
 
+  if (!loginForm) return;
+
   loginForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    errorEl.textContent = "";
+    if (errorEl) errorEl.textContent = "";
 
     const username = loginForm.username.value.trim();
     const password = loginForm.password.value;
@@ -80,7 +87,7 @@ function setupLogin() {
     const user = Auth.login(username, password);
 
     if (!user) {
-      errorEl.textContent = "Invalid username or password.";
+      if (errorEl) errorEl.textContent = "Invalid username or password.";
       return;
     }
 
@@ -93,22 +100,23 @@ function setupNav() {
   const logoutBtn = document.getElementById("logout-btn");
   const navTabs = document.querySelectorAll(".nav-tab");
 
-  logoutBtn.addEventListener("click", () => {
-    Auth.logout();
-    currentUser = null;
-    patientCharts.clear();
-    openPatientTabs.clear();
-    showLoginScreen();
-    refreshBrainAssignedList(); // clears view
-  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      Auth.logout();
+      currentUser = null;
+      patientCharts.clear();
+      openPatientTabs.clear();
+      showLoginScreen();
+      refreshBrainAssignedList();
+    });
+  }
 
   navTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      // Activate primary nav tab
       navTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
 
-      const viewName = tab.dataset.view; // e.g. "brain" or "patient-list"
+      const viewName = tab.dataset.view; // "brain", "patient-list", etc.
       setActiveView(viewName);
     });
   });
@@ -130,14 +138,10 @@ function showMainApp(user) {
 
   currentUser = user;
 
-  loginScreen.classList.remove("active");
-  mainApp.classList.add("active");
+  if (loginScreen) loginScreen.classList.remove("active");
+  if (mainApp) mainApp.classList.add("active");
+  if (usernameDisplay) usernameDisplay.textContent = user.username;
 
-  if (usernameDisplay) {
-    usernameDisplay.textContent = user.username;
-  }
-
-  // Default view: Brain
   setActiveView("brain");
   setActiveTab("brain");
   refreshBrainAssignedList();
@@ -147,8 +151,8 @@ function showLoginScreen() {
   const loginScreen = document.getElementById("login-screen");
   const mainApp = document.getElementById("main-app");
 
-  mainApp.classList.remove("active");
-  loginScreen.classList.add("active");
+  if (mainApp) mainApp.classList.remove("active");
+  if (loginScreen) loginScreen.classList.add("active");
 }
 
 /* ---------- VIEW HELPERS ---------- */
@@ -207,7 +211,7 @@ function parsePatientsCsv(text) {
         dob: cols[4],
         age: cols[5],
         weight: cols[6],
-        allergies: cols[7] ?? "",
+        allergies: cols[7] ?? ""
       };
     });
 }
@@ -233,7 +237,7 @@ function renderPatientList() {
       <td>${p.allergies}</td>
     `;
 
-    // Behaviour: clicking a row just opens/ensures a tab, no auto-switch
+    // Clicking a row just opens/ensures a tab, no auto-switch
     tr.addEventListener("click", () => {
       openPatientTab(p.patientNumber);
     });
@@ -245,13 +249,14 @@ function renderPatientList() {
 /* ---------- PATIENT TABS (SECOND ROW) ---------- */
 
 function openPatientTab(patientNumber) {
-  const patient = patientsData.find((p) => p.patientNumber === patientNumber);
+  const patient = patientsData.find(
+    (p) => p.patientNumber === patientNumber
+  );
   if (!patient) return;
 
   const tabBar = document.getElementById("patient-tab-bar");
   if (!tabBar) return;
 
-  // Create tab if not already open
   if (!openPatientTabs.has(patientNumber)) {
     const tabEl = document.createElement("button");
     tabEl.className = "patient-tab";
@@ -267,7 +272,6 @@ function openPatientTab(patientNumber) {
         e.stopPropagation();
         closePatientTab(patientNumber);
       } else {
-        // Clicking the tab itself activates the chart
         activatePatientTab(patientNumber);
       }
     });
@@ -276,11 +280,10 @@ function openPatientTab(patientNumber) {
     openPatientTabs.set(patientNumber, tabEl);
   }
 
-  // NOTE: We do NOT activate the tab here.
+  // Do NOT activate automatically when row clicked.
 }
 
 function activatePatientTab(patientNumber) {
-  // Highlight active patient tab
   for (const [id, el] of openPatientTabs.entries()) {
     if (id === patientNumber) {
       el.classList.add("active");
@@ -289,7 +292,6 @@ function activatePatientTab(patientNumber) {
     }
   }
 
-  // Load chart JSON (or from cache) and render
   loadAndRenderPatientChart(patientNumber);
 }
 
@@ -316,12 +318,14 @@ function closePatientTab(patientNumber) {
 /* ---------- LOAD & RENDER PATIENT CHART ---------- */
 
 async function loadAndRenderPatientChart(patientNumber) {
-  const summaryRow = patientsData.find((p) => p.patientNumber === patientNumber);
+  const summaryRow = patientsData.find(
+    (p) => p.patientNumber === patientNumber
+  );
 
-  // 1) Try local overridden chart first
+  // 1) Try overridden chart from localStorage
   let chart = loadChartFromLocal(patientNumber);
 
-  // 2) If no local version, fetch from JSON file
+  // 2) If none, fetch base JSON or fallback to CSV
   if (!chart) {
     try {
       const res = await fetch(`data/patients/${patientNumber}.json`);
@@ -339,7 +343,6 @@ async function loadAndRenderPatientChart(patientNumber) {
     }
   }
 
-  // Ensure runtime fields
   if (!chart.assignedNurses) chart.assignedNurses = [];
   if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
 
@@ -363,14 +366,14 @@ function buildFallbackChartFromCsv(row) {
       weightKg: Number(row.weight),
       allergies: row.allergies,
       unit: "",
-      room: "",
+      room: ""
     },
     diagnoses: [],
     orders: [],
     vitalsLog: [],
     assessments: [],
     medications: { activeOrders: [], mar: [] },
-    assignedNurses: [],
+    assignedNurses: []
   };
 }
 
@@ -472,7 +475,7 @@ function refreshBrainAssignedList() {
   });
 }
 
-/* ---------- PATIENT DETAIL RENDERING (WITH ADMIN EDIT + EXPORT) ---------- */
+/* ---------- PATIENT DETAIL RENDERING (ADMIN EDIT + EXPORT) ---------- */
 
 function renderPatientDetail(chart) {
   if (!chart) return;
@@ -494,7 +497,9 @@ function renderPatientDetail(chart) {
   container.innerHTML = `
     <section class="patient-banner">
       <div class="patient-banner-main">
-        <div class="patient-name">${escapeHtml(d.lastName || "").toUpperCase()}, ${escapeHtml(d.firstName || "")}</div>
+        <div class="patient-name">
+          ${escapeHtml(d.lastName || "").toUpperCase()}, ${escapeHtml(d.firstName || "")}
+        </div>
         <div class="patient-meta">
           <span>Patient # ${chart.patientNumber || ""}</span>
           ${d.gender ? `<span>Gender: ${escapeHtml(d.gender)}</span>` : ""}
@@ -551,7 +556,7 @@ function renderPatientDetail(chart) {
           ${
             isAdmin
               ? `<input id="edit-age" type="number" value="${d.age ?? ""}">`
-              : d.age ?? ""
+              : (d.age ?? "")
           }
         </div>
       </div>
@@ -562,9 +567,7 @@ function renderPatientDetail(chart) {
           ${
             isAdmin
               ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
-              : d.weightKg != null
-              ? d.weightKg + " kg"
-              : ""
+              : (d.weightKg != null ? d.weightKg + " kg" : "")
           }
         </div>
       </div>
@@ -640,7 +643,7 @@ function renderPatientDetail(chart) {
     }
   `;
 
-  // Assign/Unassign button
+  // Assign button
   const assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", () => {
@@ -648,12 +651,10 @@ function renderPatientDetail(chart) {
     });
   }
 
-  const isAdmin = currentUser && currentUser.role === "admin";
   if (isAdmin) {
     const saveBtn = document.getElementById("save-patient-btn");
     const exportBtn = document.getElementById("export-patient-btn");
 
-    // helper to pull current form values into chart object
     const applyAdminEdits = () => {
       const d2 = chart.demographics || {};
       const getVal = (id) => {
@@ -664,10 +665,13 @@ function renderPatientDetail(chart) {
       d2.firstName = getVal("edit-first-name");
       d2.lastName = getVal("edit-last-name");
       d2.dateOfBirth = getVal("edit-dob");
+
       const ageVal = getVal("edit-age");
       d2.age = ageVal ? Number(ageVal) : null;
+
       const weightVal = getVal("edit-weight");
       d2.weightKg = weightVal ? Number(weightVal) : null;
+
       d2.allergies = getVal("edit-allergies") || "No Known Allergies";
       d2.unit = getVal("edit-unit");
       d2.room = getVal("edit-room");
@@ -681,7 +685,7 @@ function renderPatientDetail(chart) {
           description: newPrimaryDx,
           type: "Medical",
           status: "Active",
-          onset: "",
+          onset: ""
         });
       } else if (chart.diagnoses.length > 0) {
         chart.diagnoses[0].description = newPrimaryDx;

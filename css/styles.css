@@ -162,9 +162,12 @@ button {
 
 /* BRAND BAR ABOVE TABS */
 .app-brand-bar {
-  background: #006041; /* RGB(0,96,65) */
+  background: #ffffff;
   padding: 0.35rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .brand-left {
@@ -179,17 +182,25 @@ button {
   width: auto;
 }
 
+/* Right side: username + logout */
+.brand-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* (Unused but kept if you ever want text there again) */
 .brand-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #111827;
 }
 
 /* TOP NAV (PRIMARY TABS) */
 .top-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 0.6rem 1rem;
   background: #006041; /* RGB(0,96,65) */
   color: #e5e7eb;
@@ -222,7 +233,6 @@ button {
 
 .nav-username {
   font-size: 0.88rem;
-  margin-right: 0.25rem;
 }
 
 /* SECONDARY NAV (PATIENT TABS) */
@@ -422,9 +432,5 @@ button {
 
   .nav-left {
     flex-wrap: wrap;
-  }
-
-  .nav-right {
-    align-self: flex-end;
   }
 }

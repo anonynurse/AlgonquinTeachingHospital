@@ -1,15 +1,15 @@
 // js/app.js
 import { Auth } from "./auth.js";
 
-let patientsData = [];             // from patients.csv
-const openPatientTabs = new Map(); // patientNumber -> tab element
-const patientCharts = new Map();   // patientNumber -> chart JSON
-let currentUser = null;            // { username, role }
+let patientsData = [];               // from patients.csv
+const patientCharts = new Map();     // patientNumber -> chart JSON
+const openPatientTabs = new Map();   // patientNumber -> tab element
+let currentUser = null;              // { username, role }
 
 // Drug manual state
-let drugsList = [];                // from data/drugs/drugs.json
-const drugDetails = new Map();     // id -> drug JSON
-const openDrugTabs = new Map();    // id -> tab element
+let drugsList = [];                  // from data/drugs/drugs.json
+const drugDetails = new Map();       // id -> drug JSON
+const openDrugTabs = new Map();      // id -> tab element
 
 /* ---------- UTIL ---------- */
 
@@ -17,8 +17,7 @@ function escapeHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/>/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -85,29 +84,26 @@ function setupNav() {
       Auth.logout();
       currentUser = null;
 
-      // Clear in-memory patient/drug state
+      // Clear in-memory patient & tab state
       patientCharts.clear();
       openPatientTabs.clear();
-      drugsList = [];
-      drugDetails.clear();
-      openDrugTabs.clear();
 
-      // Clear patient and drug tab DOM
+      // Clear patient tab DOM
       const ptTabBar = document.getElementById("patient-tab-bar");
       if (ptTabBar) ptTabBar.innerHTML = "";
 
+      // Clear drug tabs but leave manifest; we’ll just reset the view text
+      openDrugTabs.clear();
       const drugTabBar = document.getElementById("drug-tab-bar");
       if (drugTabBar) drugTabBar.innerHTML = "";
-
       const drugDetail = document.getElementById("drug-detail-content");
       if (drugDetail) {
-        drugDetail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
+        drugDetail.innerHTML =
+          '<p class="muted">Select a drug from the list on the left.</p>';
       }
 
       showLoginScreen();
       refreshBrainAssignedList();
-      // Reload drugs list fresh next time we show the main app
-      loadDrugs();
     });
   }
 
@@ -142,24 +138,18 @@ function showMainApp(user) {
   if (mainApp) mainApp.classList.add("active");
   if (usernameDisplay) usernameDisplay.textContent = user.username;
 
-  // Fresh session visual state
+  // Fresh visual state on login
   setActiveView("brain");
   setActiveTab("brain");
 
-  // Clear patient tabs and charts at login
   const ptTabBar = document.getElementById("patient-tab-bar");
   if (ptTabBar) ptTabBar.innerHTML = "";
   openPatientTabs.clear();
   patientCharts.clear();
 
-  // Reset brain & drug detail display
   refreshBrainAssignedList();
-  const drugDetail = document.getElementById("drug-detail-content");
-  if (drugDetail) {
-    drugDetail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
-  }
 
-  // Ensure drugs list is rendered if we already loaded it
+  // Ensure drug list is visible if already loaded
   renderDrugList();
 }
 
@@ -281,7 +271,7 @@ function openPatientTab(patientNumber) {
         patient.lastName
       )}, ${escapeHtml(patient.firstName)}</span>
       <span class="tab-close" aria-label="Close tab">&times;</span>
-    ";
+    `;
 
     tabEl.addEventListener("click", (e) => {
       if (e.target.closest(".tab-close")) {
@@ -338,30 +328,33 @@ async function loadAndRenderPatientChart(patientNumber) {
 
   let chart = null;
 
-  // Always load fresh from JSON/CSV each session
   try {
     const res = await fetch(`data/patients/${patientNumber}.json`);
     if (res.ok) {
       chart = await res.json();
-    } else {
-      console.warn(
-        `No JSON chart found for patient ${patientNumber}, using CSV only.`
-      );
-      chart = buildFallbackChartFromCsv(summaryRow);
     }
   } catch (err) {
-    console.error("Error loading patient chart JSON", err);
+    console.error("Error loading patient JSON", err);
+  }
+
+  if (!chart && summaryRow) {
     chart = buildFallbackChartFromCsv(summaryRow);
   }
 
-  if (!chart) return;
+  if (!chart) {
+    console.error("No chart or CSV row for patient", patientNumber);
+    return;
+  }
+
   if (!chart.assignedNurses) chart.assignedNurses = [];
   if (!chart.medications)
     chart.medications = { activeOrders: [], mar: [] };
-  if (!chart.demographics)
+  if (!chart.demographics && summaryRow) {
     chart.demographics = buildFallbackChartFromCsv(summaryRow).demographics;
-  if (!chart.demographics.precautions)
+  }
+  if (chart.demographics && !chart.demographics.precautions) {
     chart.demographics.precautions = "None documented";
+  }
 
   patientCharts.set(patientNumber, chart);
 
@@ -856,7 +849,6 @@ async function loadDrugs() {
       return;
     }
     const data = await res.json();
-    // Sort alphabetically by name
     drugsList = (data || []).slice().sort((a, b) =>
       a.name.localeCompare(b.name)
     );
@@ -956,7 +948,8 @@ function closeDrugTab(drugId) {
       const last = remaining[remaining.length - 1];
       activateDrugTab(last);
     } else {
-      detail.innerHTML = `<p class="muted">Select a drug from the list on the left.</p>`;
+      detail.innerHTML =
+        '<p class="muted">Select a drug from the list on the left.</p>';
     }
   }
 }

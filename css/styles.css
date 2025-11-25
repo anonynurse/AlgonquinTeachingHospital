@@ -1,6 +1,5 @@
 :root {
   --bg: #f3f4f6;
-  --bg: #006041;
   --bg-card: #ffffff;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -156,7 +155,7 @@ button {
   background: var(--bg);
 }
 
-/* TOP NAV */
+/* TOP NAV (PRIMARY TABS) */
 .top-nav {
   display: flex;
   align-items: center;
@@ -196,6 +195,64 @@ button {
   margin-right: 0.25rem;
 }
 
+/* SECONDARY NAV (PATIENT TABS) */
+.secondary-nav {
+  background: #020617;
+  border-bottom: 1px solid #111827;
+  padding: 0.2rem 0.6rem;
+}
+
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 999px;
+}
+
+.patient-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #e5e7eb;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.patient-tab.active {
+  background: #f9fafb;
+  color: #111827;
+  font-weight: 600;
+}
+
+.patient-tab .patient-tab-label {
+  max-width: 140px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tab-close {
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.tab-close:hover {
+  opacity: 1;
+}
+
 /* MAIN CONTENT AREA */
 .main-content {
   flex: 1;
@@ -213,6 +270,101 @@ button {
 
 .view h2 {
   margin-top: 0;
+}
+
+/* PATIENT LIST TABLE */
+.table-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+  padding: 0.5rem;
+  overflow-x: auto;
+}
+
+.patient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.patient-table thead {
+  background: #f3f4f6;
+}
+
+.patient-table th,
+.patient-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.patient-table tbody tr {
+  cursor: pointer;
+}
+
+.patient-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.patient-table tbody tr:hover {
+  background: #e5f2ff;
+}
+
+/* PATIENT DETAIL */
+.patient-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.patient-banner {
+  background: #0f172a;
+  color: #e5e7eb;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.patient-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.patient-meta {
+  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: #9ca3af;
+}
+
+.patient-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.info-item {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.info-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  margin-bottom: 0.15rem;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 /* RESPONSIVE */

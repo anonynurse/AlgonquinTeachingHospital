@@ -181,7 +181,7 @@ function showLoginScreen() {
     mainApp.style.display = "none";
   }
   if (loginScreen) {
-    loginScreen.style.display = "block";
+    loginScreen.style.display = "flex"; 
   }
 }
 

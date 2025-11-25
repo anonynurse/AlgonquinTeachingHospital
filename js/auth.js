@@ -3,7 +3,7 @@
 const STORAGE_KEY = "adh_current_user";
 
 // Hard-coded users for now.
-// You can add more students here later.
+// All use password: "password"
 const USERS = [
   {
     username: "admin",
@@ -11,20 +11,30 @@ const USERS = [
     role: "admin",
   },
   {
-    username: "student1",
-    password: "student1",
+    username: "sn001",
+    password: "password",
     role: "student",
   },
   {
-    username: "student2",
-    password: "student2",
+    username: "sn002",
+    password: "password",
+    role: "student",
+  },
+  {
+    username: "sn003",
+    password: "password",
+    role: "student",
+  },
+  {
+    username: "sn004",
+    password: "password",
     role: "student",
   },
 ];
 
 export const Auth = {
   init() {
-    // Nothing special for now, but here if you want to add logic later.
+    // Placeholder for future logic if needed
   },
 
   /**

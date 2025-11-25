@@ -1,23 +1,33 @@
 // js/app.js
-import { Auth } from "./auth.js";
 
-let patientsData = [];               // from patients.csv
-const patientCharts = new Map();     // patientNumber -> chart JSON
-const openPatientTabs = new Map();   // patientNumber -> tab element
-let currentUser = null;              // { username, role }
+/************ SIMPLE AUTH ************/
+
+const USERS = {
+  admin:  { password: "password", role: "admin" },
+  sn001:  { password: "password", role: "student" },
+  sn002:  { password: "password", role: "student" },
+  sn003:  { password: "password", role: "student" },
+  sn004:  { password: "password", role: "student" }
+};
+
+let currentUser = null;               // { username, role }
+let patientsData = [];                // from patients.csv
+const patientCharts = new Map();      // patientNumber -> chart JSON
+const openPatientTabs = new Map();    // patientNumber -> tab element
 
 // Drug manual state
-let drugsList = [];                  // from data/drugs/drugs.json
-const drugDetails = new Map();       // id -> drug JSON
-const openDrugTabs = new Map();      // id -> tab element
+let drugsList = [];                   // from data/drugs/drugs.json
+const drugDetails = new Map();        // id -> drug JSON
+const openDrugTabs = new Map();       // id -> tab element
 
-/* ---------- UTIL ---------- */
+/************ UTIL ************/
 
 function escapeHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&quot;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -25,7 +35,7 @@ function exportChartAsJson(chart) {
   if (!chart) return;
   const filename = `${chart.patientNumber || "patient"}.json`;
   const blob = new Blob([JSON.stringify(chart, null, 2)], {
-    type: "application/json",
+    type: "application/json"
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -37,10 +47,9 @@ function exportChartAsJson(chart) {
   URL.revokeObjectURL(url);
 }
 
-/* ---------- ENTRY POINT ---------- */
+/************ ENTRY ************/
 
 document.addEventListener("DOMContentLoaded", () => {
-  Auth.init();
   setupLogin();
   setupNav();
   loadPatients();
@@ -48,12 +57,44 @@ document.addEventListener("DOMContentLoaded", () => {
   restoreSessionIfExists();
 });
 
-/* ---------- LOGIN & NAV ---------- */
+/************ AUTH + NAV ************/
+
+function tryLogin(username, password) {
+  const userRec = USERS[username];
+  if (!userRec) return null;
+  if (userRec.password !== password) return null;
+  return { username, role: userRec.role };
+}
+
+function saveSession(user) {
+  try {
+    window.sessionStorage.setItem("adh_user", JSON.stringify(user));
+  } catch (e) {
+    console.warn("Could not save session:", e);
+  }
+}
+
+function getSessionUser() {
+  try {
+    const raw = window.sessionStorage.getItem("adh_user");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearSession() {
+  try {
+    window.sessionStorage.removeItem("adh_user");
+  } catch (e) {
+    /* ignore */
+  }
+}
 
 function setupLogin() {
   const loginForm = document.getElementById("login-form");
   const errorEl = document.getElementById("login-error");
-
   if (!loginForm) return;
 
   loginForm.addEventListener("submit", (event) => {
@@ -63,13 +104,15 @@ function setupLogin() {
     const username = loginForm.username.value.trim();
     const password = loginForm.password.value;
 
-    const user = Auth.login(username, password);
+    const user = tryLogin(username, password);
 
     if (!user) {
       if (errorEl) errorEl.textContent = "Invalid username or password.";
       return;
     }
 
+    currentUser = user;
+    saveSession(user);
     loginForm.reset();
     showMainApp(user);
   });
@@ -81,19 +124,19 @@ function setupNav() {
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
-      Auth.logout();
+      clearSession();
       currentUser = null;
 
-      // Clear in-memory patient & tab state
+      // Clear in-memory state
       patientCharts.clear();
       openPatientTabs.clear();
+      openDrugTabs.clear();
 
-      // Clear patient tab DOM
+      // Clear patient tab bar
       const ptTabBar = document.getElementById("patient-tab-bar");
       if (ptTabBar) ptTabBar.innerHTML = "";
 
-      // Clear drug tabs but leave manifest; we’ll just reset the view text
-      openDrugTabs.clear();
+      // Clear drug tab bar & detail text
       const drugTabBar = document.getElementById("drug-tab-bar");
       if (drugTabBar) drugTabBar.innerHTML = "";
       const drugDetail = document.getElementById("drug-detail-content");
@@ -119,8 +162,9 @@ function setupNav() {
 }
 
 function restoreSessionIfExists() {
-  const user = Auth.getCurrentUser();
+  const user = getSessionUser();
   if (user) {
+    currentUser = user;
     showMainApp(user);
   } else {
     showLoginScreen();
@@ -132,25 +176,21 @@ function showMainApp(user) {
   const mainApp = document.getElementById("main-app");
   const usernameDisplay = document.getElementById("nav-username");
 
-  currentUser = user;
-
   if (loginScreen) loginScreen.classList.remove("active");
   if (mainApp) mainApp.classList.add("active");
-  if (usernameDisplay) usernameDisplay.textContent = user.username;
+  if (usernameDisplay && user) usernameDisplay.textContent = user.username;
 
-  // Fresh visual state on login
   setActiveView("brain");
   setActiveTab("brain");
 
+  // Clean patient tabs on login
   const ptTabBar = document.getElementById("patient-tab-bar");
   if (ptTabBar) ptTabBar.innerHTML = "";
   openPatientTabs.clear();
   patientCharts.clear();
 
   refreshBrainAssignedList();
-
-  // Ensure drug list is visible if already loaded
-  renderDrugList();
+  renderDrugList(); // if drugs already loaded, show them
 }
 
 function showLoginScreen() {
@@ -161,7 +201,7 @@ function showLoginScreen() {
   if (loginScreen) loginScreen.classList.add("active");
 }
 
-/* ---------- VIEW HELPERS ---------- */
+/************ VIEW HELPERS ************/
 
 function setActiveView(viewName) {
   const views = document.querySelectorAll(".view");
@@ -182,7 +222,7 @@ function setActiveTab(viewName) {
   });
 }
 
-/* ---------- PATIENT LIST: LOAD & RENDER ---------- */
+/************ PATIENT LIST ************/
 
 async function loadPatients() {
   try {
@@ -218,7 +258,7 @@ function parsePatientsCsv(text) {
         dob: cols[4],
         age: cols[5],
         weight: cols[6],
-        allergies: cols[7] ?? "",
+        allergies: cols[7] ?? ""
       };
     });
 }
@@ -244,7 +284,7 @@ function renderPatientList() {
       <td>${p.allergies}</td>
     `;
 
-    // Clicking a row just opens/ensures a tab, no auto-switch
+    // Clicking a row just opens/ensures a tab; no auto-switch
     tr.addEventListener("click", () => {
       openPatientTab(p.patientNumber);
     });
@@ -253,7 +293,7 @@ function renderPatientList() {
   });
 }
 
-/* ---------- PATIENT TABS (SECOND ROW) ---------- */
+/************ PATIENT TABS (ROW 2) ************/
 
 function openPatientTab(patientNumber) {
   const patient = patientsData.find((p) => p.patientNumber === patientNumber);
@@ -285,8 +325,7 @@ function openPatientTab(patientNumber) {
     tabBar.appendChild(tabEl);
     openPatientTabs.set(patientNumber, tabEl);
   }
-
-  // Do NOT auto-activate when row clicked
+  // No auto-activate here; user clicks tab to open
 }
 
 function activatePatientTab(patientNumber) {
@@ -321,11 +360,10 @@ function closePatientTab(patientNumber) {
   }
 }
 
-/* ---------- LOAD & RENDER PATIENT CHART ---------- */
+/************ PATIENT CHART LOAD + RENDER ************/
 
 async function loadAndRenderPatientChart(patientNumber) {
   const summaryRow = patientsData.find((p) => p.patientNumber === patientNumber);
-
   let chart = null;
 
   try {
@@ -347,8 +385,7 @@ async function loadAndRenderPatientChart(patientNumber) {
   }
 
   if (!chart.assignedNurses) chart.assignedNurses = [];
-  if (!chart.medications)
-    chart.medications = { activeOrders: [], mar: [] };
+  if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
   if (!chart.demographics && summaryRow) {
     chart.demographics = buildFallbackChartFromCsv(summaryRow).demographics;
   }
@@ -377,18 +414,18 @@ function buildFallbackChartFromCsv(row) {
       allergies: row.allergies || "No Known Allergies",
       unit: "",
       room: "",
-      precautions: "None documented",
+      precautions: "None documented"
     },
     diagnoses: [],
     orders: [],
     vitalsLog: [],
     assessments: [],
     medications: { activeOrders: [], mar: [] },
-    assignedNurses: [],
+    assignedNurses: []
   };
 }
 
-/* ---------- ASSIGN / UNASSIGN (SESSION ONLY) ---------- */
+/************ ASSIGN / UNASSIGN (SESSION ONLY) ************/
 
 function toggleAssignment(patientNumber) {
   if (!currentUser) return;
@@ -414,7 +451,7 @@ function toggleAssignment(patientNumber) {
   refreshBrainAssignedList();
 }
 
-/* ---------- BRAIN: MY ASSIGNED PATIENTS (SESSION ONLY) ---------- */
+/************ BRAIN: ASSIGNED PATIENTS ************/
 
 function refreshBrainAssignedList() {
   const container = document.getElementById("brain-assigned-list");
@@ -437,7 +474,8 @@ function refreshBrainAssignedList() {
   }
 
   if (assigned.length === 0) {
-    container.innerHTML = `<p class="muted">You are not currently assigned to any patients.</p>`;
+    container.innerHTML =
+      `<p class="muted">You are not currently assigned to any patients.</p>`;
     return;
   }
 
@@ -488,11 +526,10 @@ function refreshBrainAssignedList() {
   });
 }
 
-/* ---------- PATIENT DETAIL RENDERING + INTERNAL TABS ---------- */
+/************ PATIENT DETAIL + INTERNAL TABS ************/
 
 function renderPatientDetail(chart) {
   if (!chart) return;
-
   const container = document.getElementById("patient-detail-content");
   if (!container) return;
 
@@ -519,7 +556,6 @@ function renderPatientDetail(chart) {
   const precautions = d.precautions || "None documented";
 
   container.innerHTML = `
-    <!-- HEADER BUBBLE -->
     <section class="patient-banner">
       <div class="patient-banner-main">
         <div class="patient-name-line">
@@ -560,7 +596,6 @@ function renderPatientDetail(chart) {
       }
     </section>
 
-    <!-- INTERNAL CHART TABS -->
     <div class="chart-subnav">
       <button class="chart-tab active" data-chart-view="summary">Summary</button>
       <button class="chart-tab" data-chart-view="orders">Orders</button>
@@ -569,7 +604,6 @@ function renderPatientDetail(chart) {
     </div>
 
     <div id="patient-chart-views">
-      <!-- SUMMARY TAB -->
       <div id="chart-summary" class="chart-view active">
         <section class="patient-info-grid">
           <div class="info-item">
@@ -736,24 +770,20 @@ function renderPatientDetail(chart) {
         }
       </div>
 
-      <!-- ORDERS TAB -->
       <div id="chart-orders" class="chart-view">
         <p class="muted">Orders view coming soon.</p>
       </div>
 
-      <!-- FLOWSHEET TAB -->
       <div id="chart-flowsheet" class="chart-view">
         <p class="muted">Flowsheet view coming soon.</p>
       </div>
 
-      <!-- MAR TAB -->
       <div id="chart-mar" class="chart-view">
         <p class="muted">MAR view coming soon.</p>
       </div>
     </div>
   `;
 
-  /* Assign / Unassign */
   const assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", () => {
@@ -761,7 +791,6 @@ function renderPatientDetail(chart) {
     });
   }
 
-  /* Internal chart tab switching */
   const chartTabs = container.querySelectorAll(".chart-tab");
   const chartViews = container.querySelectorAll(".chart-view");
   chartTabs.forEach((btn) => {
@@ -769,14 +798,13 @@ function renderPatientDetail(chart) {
       chartTabs.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
 
-      const view = btn.dataset.chartView; // summary/orders/flowsheet/mar
+      const view = btn.dataset.chartView;
       chartViews.forEach((v) => v.classList.remove("active"));
       const activeView = container.querySelector(`#chart-${view}`);
       if (activeView) activeView.classList.add("active");
     });
   });
 
-  /* Admin save / export */
   if (isAdmin) {
     const saveBtn = document.getElementById("save-patient-btn");
     const exportBtn = document.getElementById("export-patient-btn");
@@ -813,7 +841,7 @@ function renderPatientDetail(chart) {
           description: newPrimaryDx,
           type: "Medical",
           status: "Active",
-          onset: "",
+          onset: ""
         });
       } else if (chart.diagnoses.length > 0) {
         chart.diagnoses[0].description = newPrimaryDx;
@@ -839,7 +867,7 @@ function renderPatientDetail(chart) {
   }
 }
 
-/* ---------- DRUG MANUAL: LOAD & LIST ---------- */
+/************ DRUG MANUAL ************/
 
 async function loadDrugs() {
   try {
@@ -886,8 +914,6 @@ function renderDrugList() {
     });
   });
 }
-
-/* ---------- DRUG TABS (INSIDE DRUG MANUAL VIEW) ---------- */
 
 function openDrugTab(drugId) {
   const drug = drugsList.find((d) => d.id === drugId);
@@ -953,8 +979,6 @@ function closeDrugTab(drugId) {
     }
   }
 }
-
-/* ---------- LOAD & RENDER SINGLE DRUG ---------- */
 
 async function loadAndRenderDrug(drugId) {
   if (!drugId) return;

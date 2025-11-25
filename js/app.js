@@ -474,17 +474,48 @@ function renderPatientDetail(chart) {
 
   const isAdmin = currentUser && currentUser.role === "admin";
 
+  const lastName = d.lastName || "";
+  const firstName = d.firstName || "";
+  const age = d.age != null ? d.age : "";
+  const gender = d.gender || "";
+  const dob = d.dateOfBirth || "";
+  const weight = d.weightKg != null ? d.weightKg + " kg" : "";
+  const unit = d.unit || "";
+  const room = d.room || "";
+  const allergies = d.allergies || "No Known Allergies";
+  const precautions = d.precautions || "None documented";
+
   container.innerHTML = `
+    <!-- HEADER BUBBLE -->
     <section class="patient-banner">
       <div class="patient-banner-main">
-        <div class="patient-name">
-          ${escapeHtml(d.lastName || "").toUpperCase()}, ${escapeHtml(d.firstName || "")}
+        <div class="patient-name-line">
+          ${escapeHtml(lastName).toUpperCase()}, ${escapeHtml(firstName)}
         </div>
-        <div class="patient-meta">
+        <div class="patient-banner-row">
           <span>Patient # ${chart.patientNumber || ""}</span>
-          ${d.gender ? `<span>Gender: ${escapeHtml(d.gender)}</span>` : ""}
-          ${d.unit ? `<span>Unit: ${escapeHtml(d.unit)}</span>` : ""}
-          ${d.room ? `<span>Room: ${escapeHtml(d.room)}</span>` : ""}
+          ${age !== "" ? `<span>Age: ${age}</span>` : ""}
+          ${gender ? `<span>Gender: ${escapeHtml(gender)}</span>` : ""}
+        </div>
+        <div class="patient-banner-row">
+          <span>DOB: ${escapeHtml(dob || "—")}</span>
+        </div>
+        <div class="patient-banner-row">
+          <span>Weight: ${escapeHtml(weight || "—")}</span>
+        </div>
+        <div class="patient-banner-row">
+          <span>Unit: ${escapeHtml(unit || "—")}</span>
+          <span>Room: ${escapeHtml(room || "—")}</span>
+        </div>
+        <div class="patient-banner-row">
+          <span class="banner-allergies">
+            Allergies: ${escapeHtml(allergies)}
+          </span>
+        </div>
+        <div class="patient-banner-row">
+          <span class="banner-precautions">
+            Precautions: ${escapeHtml(precautions)}
+          </span>
         </div>
       </div>
       ${
@@ -496,135 +527,182 @@ function renderPatientDetail(chart) {
       }
     </section>
 
-    <section class="patient-info-grid">
-      <div class="info-item">
-        <div class="info-label">First Name</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-first-name" value="${escapeHtml(d.firstName || "")}">`
-              : escapeHtml(d.firstName || "")
-          }
-        </div>
+    <!-- INTERNAL CHART TABS -->
+    <div class="chart-subnav">
+      <button class="chart-tab active" data-chart-view="summary">Summary</button>
+      <button class="chart-tab" data-chart-view="orders">Orders</button>
+      <button class="chart-tab" data-chart-view="flowsheet">Flowsheet</button>
+      <button class="chart-tab" data-chart-view="mar">MAR</button>
+    </div>
+
+    <div id="patient-chart-views">
+      <!-- SUMMARY TAB -->
+      <div id="chart-summary" class="chart-view active">
+        <section class="patient-info-grid">
+          <div class="info-item">
+            <div class="info-label">First Name</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-first-name" value="${escapeHtml(firstName)}">`
+                  : escapeHtml(firstName)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Last Name</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-last-name" value="${escapeHtml(lastName)}">`
+                  : escapeHtml(lastName)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Date of Birth</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-dob" value="${escapeHtml(dob)}">`
+                  : escapeHtml(dob)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Age</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-age" type="number" value="${age}">`
+                  : age
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Weight (kg)</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
+                  : weight
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Gender</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-gender" value="${escapeHtml(gender)}">`
+                  : escapeHtml(gender)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Allergies</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-allergies" value="${escapeHtml(allergies)}">`
+                  : `<span class="banner-allergies">${escapeHtml(allergies)}</span>`
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Precautions</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-precautions" value="${escapeHtml(precautions)}">`
+                  : `<span class="banner-precautions">${escapeHtml(precautions)}</span>`
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Unit</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-unit" value="${escapeHtml(unit)}">`
+                  : escapeHtml(unit)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Room</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-room" value="${escapeHtml(room)}">`
+                  : escapeHtml(room)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Primary Diagnosis</div>
+            <div class="info-value">
+              ${
+                isAdmin
+                  ? `<input id="edit-primary-dx" value="${escapeHtml(primaryDx || "")}">`
+                  : escapeHtml(primaryDx)
+              }
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Active Orders</div>
+            <div class="info-value">${(chart.orders || []).length}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">MAR Entries</div>
+            <div class="info-value">${(chart.medications?.mar || []).length}</div>
+          </div>
+        </section>
+
+        ${
+          isAdmin
+            ? `<div class="info-item" style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                 <button id="save-patient-btn" class="btn-primary" style="width:auto;padding-inline:1.25rem;">
+                   Save Changes
+                 </button>
+                 <button id="export-patient-btn" class="btn-secondary" style="width:auto;padding-inline:1.25rem;">
+                   Export JSON
+                 </button>
+               </div>`
+            : ""
+        }
       </div>
 
-      <div class="info-item">
-        <div class="info-label">Last Name</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-last-name" value="${escapeHtml(d.lastName || "")}">`
-              : escapeHtml(d.lastName || "")
-          }
-        </div>
+      <!-- ORDERS TAB -->
+      <div id="chart-orders" class="chart-view">
+        <p class="muted">Orders view coming soon.</p>
       </div>
 
-      <div class="info-item">
-        <div class="info-label">Date of Birth</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-dob" value="${escapeHtml(d.dateOfBirth || "")}">`
-              : escapeHtml(d.dateOfBirth || "")
-          }
-        </div>
+      <!-- FLOWSHEET TAB -->
+      <div id="chart-flowsheet" class="chart-view">
+        <p class="muted">Flowsheet view coming soon.</p>
       </div>
 
-      <div class="info-item">
-        <div class="info-label">Age</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-age" type="number" value="${d.age ?? ""}">`
-              : d.age ?? ""
-          }
-        </div>
+      <!-- MAR TAB -->
+      <div id="chart-mar" class="chart-view">
+        <p class="muted">MAR view coming soon.</p>
       </div>
-
-      <div class="info-item">
-        <div class="info-label">Weight (kg)</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
-              : d.weightKg != null
-              ? d.weightKg + " kg"
-              : ""
-          }
-        </div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">Allergies</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-allergies" value="${escapeHtml(
-                  d.allergies || "No Known Allergies"
-                )}">`
-              : escapeHtml(d.allergies || "No Known Allergies")
-          }
-        </div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">Unit</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-unit" value="${escapeHtml(d.unit || "")}">`
-              : escapeHtml(d.unit || "")
-          }
-        </div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">Room</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-room" value="${escapeHtml(d.room || "")}">`
-              : escapeHtml(d.room || "")
-          }
-        </div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">Primary Diagnosis</div>
-        <div class="info-value">
-          ${
-            isAdmin
-              ? `<input id="edit-primary-dx" value="${escapeHtml(primaryDx || "")}">`
-              : escapeHtml(primaryDx)
-          }
-        </div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">Active Orders</div>
-        <div class="info-value">${(chart.orders || []).length}</div>
-      </div>
-
-      <div class="info-item">
-        <div class="info-label">MAR Entries</div>
-        <div class="info-value">${(chart.medications?.mar || []).length}</div>
-      </div>
-    </section>
-
-    ${
-      isAdmin
-        ? `<div class="info-item" style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-             <button id="save-patient-btn" class="btn-primary" style="width:auto;padding-inline:1.25rem;">
-               Save Changes
-             </button>
-             <button id="export-patient-btn" class="btn-secondary" style="width:auto;padding-inline:1.25rem;">
-               Export JSON
-             </button>
-           </div>`
-        : ""
-    }
+    </div>
   `;
 
+  /* Assign / Unassign */
   const assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", () => {
@@ -632,6 +710,22 @@ function renderPatientDetail(chart) {
     });
   }
 
+  /* Internal chart tab switching */
+  const chartTabs = container.querySelectorAll(".chart-tab");
+  const chartViews = container.querySelectorAll(".chart-view");
+  chartTabs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      chartTabs.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      const view = btn.dataset.chartView; // summary/orders/flowsheet/mar
+      chartViews.forEach((v) => v.classList.remove("active"));
+      const activeView = container.querySelector(`#chart-${view}`);
+      if (activeView) activeView.classList.add("active");
+    });
+  });
+
+  /* Admin save / export */
   if (isAdmin) {
     const saveBtn = document.getElementById("save-patient-btn");
     const exportBtn = document.getElementById("export-patient-btn");
@@ -653,7 +747,9 @@ function renderPatientDetail(chart) {
       const weightVal = getVal("edit-weight");
       d2.weightKg = weightVal ? Number(weightVal) : null;
 
+      d2.gender = getVal("edit-gender");
       d2.allergies = getVal("edit-allergies") || "No Known Allergies";
+      d2.precautions = getVal("edit-precautions") || "None documented";
       d2.unit = getVal("edit-unit");
       d2.room = getVal("edit-room");
       chart.demographics = d2;
@@ -691,3 +787,4 @@ function renderPatientDetail(chart) {
     }
   }
 }
+

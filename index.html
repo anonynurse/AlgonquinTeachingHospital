@@ -49,12 +49,15 @@
     </section>
 
     <!-- MAIN APP -->
-<section id="main-app" class="screen">
+    <section id="main-app" class="screen">
       <!-- BRAND BAR -->
       <div class="app-brand-bar">
         <div class="brand-left">
           <img src="logo.png" alt="Hospital Logo" class="brand-logo" />
-          <span class="brand-title">Algonquin Digital Hospital</span>
+        </div>
+        <div class="brand-right">
+          <span id="nav-username" class="nav-username"></span>
+          <button id="logout-btn" class="btn-secondary">Log Out</button>
         </div>
       </div>
 
@@ -64,10 +67,6 @@
           <button class="nav-tab active" data-view="brain">Brain</button>
           <button class="nav-tab" data-view="patient-list">Patient List</button>
           <button class="nav-tab" data-view="drug-manual">Drug Manual</button>
-        </div>
-        <div class="nav-right">
-          <span id="nav-username" class="nav-username"></span>
-          <button id="logout-btn" class="btn-secondary">Log Out</button>
         </div>
       </header>
 

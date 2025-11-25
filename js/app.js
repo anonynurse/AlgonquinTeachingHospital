@@ -1,28 +1,31 @@
-// js/app.js
+// js/app.js  — minimal stable version
 
 /************ SIMPLE AUTH ************/
 
 const USERS = {
-  admin:  { password: "password", role: "admin" },
-  sn001:  { password: "password", role: "student" },
-  sn002:  { password: "password", role: "student" },
-  sn003:  { password: "password", role: "student" },
-  sn004:  { password: "password", role: "student" }
+  admin: { password: "password", role: "admin" },
+  sn001: { password: "password", role: "student" },
+  sn002: { password: "password", role: "student" },
+  sn003: { password: "password", role: "student" },
+  sn004: { password: "password", role: "student" }
 };
 
-let currentUser = null;               // { username, role }
-let patientsData = [];                // from patients.csv
-const patientCharts = new Map();      // patientNumber -> chart JSON
-const openPatientTabs = new Map();    // patientNumber -> tab element
+let currentUser = null;              // { username, role }
 
-// Drug manual state
-let drugsList = [];                   // from data/drugs/drugs.json
-const drugDetails = new Map();        // id -> drug JSON
-const openDrugTabs = new Map();       // id -> tab element
+/************ APP STATE ************/
+
+let patientsData = [];               // from patients.csv
+const patientCharts = new Map();     // patientNumber -> basic chart
+const openPatientTabs = new Map();   // patientNumber -> tab element
+
+let drugsList = [];                  // from data/drugs/drugs.json
+const drugDetails = new Map();       // id -> drug JSON
+const openDrugTabs = new Map();      // id -> tab element
 
 /************ UTIL ************/
 
-function escapeHtml(str = "") {
+function escapeHtml(str) {
+  if (str == null) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -31,290 +34,245 @@ function escapeHtml(str = "") {
     .replace(/'/g, "&#39;");
 }
 
-function exportChartAsJson(chart) {
-  if (!chart) return;
-  const filename = `${chart.patientNumber || "patient"}.json`;
-  const blob = new Blob([JSON.stringify(chart, null, 2)], {
-    type: "application/json"
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 /************ ENTRY ************/
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", function () {
   setupLogin();
   setupNav();
   loadPatients();
   loadDrugs();
-  restoreSessionIfExists();
 });
 
-/************ AUTH + NAV ************/
-
-function tryLogin(username, password) {
-  const userRec = USERS[username];
-  if (!userRec) return null;
-  if (userRec.password !== password) return null;
-  return { username, role: userRec.role };
-}
-
-function saveSession(user) {
-  try {
-    window.sessionStorage.setItem("adh_user", JSON.stringify(user));
-  } catch (e) {
-    console.warn("Could not save session:", e);
-  }
-}
-
-function getSessionUser() {
-  try {
-    const raw = window.sessionStorage.getItem("adh_user");
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
-}
-
-function clearSession() {
-  try {
-    window.sessionStorage.removeItem("adh_user");
-  } catch (e) {
-    /* ignore */
-  }
-}
+/************ LOGIN + NAV ************/
 
 function setupLogin() {
-  const loginForm = document.getElementById("login-form");
-  const errorEl = document.getElementById("login-error");
-  if (!loginForm) return;
+  var form = document.getElementById("login-form");
+  if (!form) return;
 
-  loginForm.addEventListener("submit", (event) => {
-    event.preventDefault();
+  var errorEl = document.getElementById("login-error");
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
     if (errorEl) errorEl.textContent = "";
 
-    const username = loginForm.username.value.trim();
-    const password = loginForm.password.value;
+    // Try to get username/password robustly
+    var usernameInput =
+      form.querySelector("input[name='username']") ||
+      document.getElementById("username");
+    var passwordInput =
+      form.querySelector("input[name='password']") ||
+      document.getElementById("password");
 
-    const user = tryLogin(username, password);
+    var username = usernameInput ? usernameInput.value.trim() : "";
+    var password = passwordInput ? passwordInput.value : "";
 
+    var user = tryLogin(username, password);
     if (!user) {
       if (errorEl) errorEl.textContent = "Invalid username or password.";
       return;
     }
 
     currentUser = user;
-    saveSession(user);
-    loginForm.reset();
-    showMainApp(user);
+    form.reset();
+    showMainApp();
   });
 }
 
-function setupNav() {
-  const logoutBtn = document.getElementById("logout-btn");
-  const navTabs = document.querySelectorAll(".nav-tab");
+function tryLogin(username, password) {
+  var rec = USERS[username];
+  if (!rec) return null;
+  if (rec.password !== password) return null;
+  return { username: username, role: rec.role };
+}
 
+function setupNav() {
+  var logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      clearSession();
+    logoutBtn.addEventListener("click", function () {
       currentUser = null;
 
-      // Clear in-memory state
-      patientCharts.clear();
-      openPatientTabs.clear();
-      openDrugTabs.clear();
-
-      // Clear patient tab bar
-      const ptTabBar = document.getElementById("patient-tab-bar");
+      // Reset patient tabs
+      var ptTabBar = document.getElementById("patient-tab-bar");
       if (ptTabBar) ptTabBar.innerHTML = "";
+      openPatientTabs.clear();
+      patientCharts.clear();
 
-      // Clear drug tab bar & detail text
-      const drugTabBar = document.getElementById("drug-tab-bar");
+      // Reset drug tabs
+      var drugTabBar = document.getElementById("drug-tab-bar");
       if (drugTabBar) drugTabBar.innerHTML = "";
-      const drugDetail = document.getElementById("drug-detail-content");
+      openDrugTabs.clear();
+      var drugDetail = document.getElementById("drug-detail-content");
       if (drugDetail) {
         drugDetail.innerHTML =
           '<p class="muted">Select a drug from the list on the left.</p>';
       }
 
+      // Back to login
       showLoginScreen();
       refreshBrainAssignedList();
     });
   }
 
-  navTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      navTabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
+  var navTabs = document.querySelectorAll(".nav-tab");
+  for (var i = 0; i < navTabs.length; i++) {
+    (function (tab) {
+      tab.addEventListener("click", function () {
+        // highlight tab
+        for (var j = 0; j < navTabs.length; j++) {
+          navTabs[j].classList.remove("active");
+        }
+        tab.classList.add("active");
 
-      const viewName = tab.dataset.view; // "brain", "patient-list", "drug-manual"
-      setActiveView(viewName);
-    });
-  });
-}
-
-function restoreSessionIfExists() {
-  const user = getSessionUser();
-  if (user) {
-    currentUser = user;
-    showMainApp(user);
-  } else {
-    showLoginScreen();
+        var viewName = tab.getAttribute("data-view");
+        setActiveView(viewName);
+      });
+    })(navTabs[i]);
   }
 }
 
-function showMainApp(user) {
-  const loginScreen = document.getElementById("login-screen");
-  const mainApp = document.getElementById("main-app");
-  const usernameDisplay = document.getElementById("nav-username");
+function showMainApp() {
+  var loginScreen = document.getElementById("login-screen");
+  var mainApp = document.getElementById("main-app");
+  var usernameDisplay = document.getElementById("nav-username");
 
   if (loginScreen) loginScreen.classList.remove("active");
   if (mainApp) mainApp.classList.add("active");
-  if (usernameDisplay && user) usernameDisplay.textContent = user.username;
+  if (usernameDisplay && currentUser) {
+    usernameDisplay.textContent = currentUser.username;
+  }
 
   setActiveView("brain");
   setActiveTab("brain");
-
-  // Clean patient tabs on login
-  const ptTabBar = document.getElementById("patient-tab-bar");
-  if (ptTabBar) ptTabBar.innerHTML = "";
-  openPatientTabs.clear();
-  patientCharts.clear();
-
   refreshBrainAssignedList();
-  renderDrugList(); // if drugs already loaded, show them
 }
 
 function showLoginScreen() {
-  const loginScreen = document.getElementById("login-screen");
-  const mainApp = document.getElementById("main-app");
-
+  var loginScreen = document.getElementById("login-screen");
+  var mainApp = document.getElementById("main-app");
   if (mainApp) mainApp.classList.remove("active");
   if (loginScreen) loginScreen.classList.add("active");
 }
 
-/************ VIEW HELPERS ************/
-
 function setActiveView(viewName) {
-  const views = document.querySelectorAll(".view");
-  views.forEach((v) => v.classList.remove("active"));
-
-  const target = document.getElementById(`view-${viewName}`);
+  var views = document.querySelectorAll(".view");
+  for (var i = 0; i < views.length; i++) {
+    views[i].classList.remove("active");
+  }
+  var target = document.getElementById("view-" + viewName);
   if (target) target.classList.add("active");
 }
 
 function setActiveTab(viewName) {
-  const tabs = document.querySelectorAll(".nav-tab");
-  tabs.forEach((t) => {
-    if (t.dataset.view === viewName) {
-      t.classList.add("active");
+  var tabs = document.querySelectorAll(".nav-tab");
+  for (var i = 0; i < tabs.length; i++) {
+    var v = tabs[i].getAttribute("data-view");
+    if (v === viewName) {
+      tabs[i].classList.add("active");
     } else {
-      t.classList.remove("active");
+      tabs[i].classList.remove("active");
     }
-  });
+  }
 }
 
 /************ PATIENT LIST ************/
 
-async function loadPatients() {
-  try {
-    const res = await fetch("data/patients.csv");
-    if (!res.ok) {
-      console.error("Failed to load patients.csv", res.status);
-      return;
-    }
-
-    const text = await res.text();
-    patientsData = parsePatientsCsv(text);
-    renderPatientList();
-    refreshBrainAssignedList();
-  } catch (err) {
-    console.error("Error loading patients.csv", err);
-  }
-}
-
-function parsePatientsCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const dataLines = lines.slice(1); // skip header
-
-  return dataLines
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-      return {
-        patientNumber: cols[0],
-        lastName: cols[1],
-        firstName: cols[2],
-        gender: cols[3],
-        dob: cols[4],
-        age: cols[5],
-        weight: cols[6],
-        allergies: cols[7] ?? ""
-      };
+function loadPatients() {
+  fetch("data/patients.csv")
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      patientsData = parsePatientsCsv(text);
+      renderPatientList();
+    })
+    .catch(function (err) {
+      console.error("Error loading patients.csv:", err);
     });
 }
 
+function parsePatientsCsv(text) {
+  var lines = text.trim().split(/\r?\n/);
+  if (lines.length <= 1) return [];
+  var dataLines = lines.slice(1); // skip header
+
+  var out = [];
+  for (var i = 0; i < dataLines.length; i++) {
+    var line = dataLines[i].trim();
+    if (!line) continue;
+    var cols = line.split(",").map(function (c) {
+      return c.trim().replace(/^"|"$/g, "");
+    });
+    out.push({
+      patientNumber: cols[0],
+      lastName: cols[1],
+      firstName: cols[2],
+      gender: cols[3],
+      dob: cols[4],
+      age: cols[5],
+      weight: cols[6],
+      allergies: cols[7] || ""
+    });
+  }
+  return out;
+}
+
 function renderPatientList() {
-  const tbody = document.getElementById("patient-table-body");
+  var tbody = document.getElementById("patient-table-body");
   if (!tbody) return;
 
   tbody.innerHTML = "";
 
-  patientsData.forEach((p) => {
-    const tr = document.createElement("tr");
-    tr.dataset.patientNumber = p.patientNumber;
+  for (var i = 0; i < patientsData.length; i++) {
+    (function (p) {
+      var tr = document.createElement("tr");
+      tr.setAttribute("data-patient-number", p.patientNumber);
+      tr.innerHTML =
+        "<td>" + escapeHtml(p.patientNumber) + "</td>" +
+        "<td>" + escapeHtml(p.lastName) + "</td>" +
+        "<td>" + escapeHtml(p.firstName) + "</td>" +
+        "<td>" + escapeHtml(p.gender) + "</td>" +
+        "<td>" + escapeHtml(p.dob) + "</td>" +
+        "<td>" + escapeHtml(p.age) + "</td>" +
+        "<td>" + escapeHtml(p.weight) + "</td>" +
+        "<td>" + escapeHtml(p.allergies) + "</td>";
 
-    tr.innerHTML = `
-      <td>${p.patientNumber}</td>
-      <td>${p.lastName}</td>
-      <td>${p.firstName}</td>
-      <td>${p.gender}</td>
-      <td>${p.dob}</td>
-      <td>${p.age}</td>
-      <td>${p.weight}</td>
-      <td>${p.allergies}</td>
-    `;
+      tr.addEventListener("click", function () {
+        openPatientTab(p.patientNumber);
+      });
 
-    // Clicking a row just opens/ensures a tab; no auto-switch
-    tr.addEventListener("click", () => {
-      openPatientTab(p.patientNumber);
-    });
-
-    tbody.appendChild(tr);
-  });
+      tbody.appendChild(tr);
+    })(patientsData[i]);
+  }
 }
 
-/************ PATIENT TABS (ROW 2) ************/
+/************ PATIENT TABS ************/
 
 function openPatientTab(patientNumber) {
-  const patient = patientsData.find((p) => p.patientNumber === patientNumber);
+  var patient = null;
+  for (var i = 0; i < patientsData.length; i++) {
+    if (patientsData[i].patientNumber === patientNumber) {
+      patient = patientsData[i];
+      break;
+    }
+  }
   if (!patient) return;
 
-  const tabBar = document.getElementById("patient-tab-bar");
+  var tabBar = document.getElementById("patient-tab-bar");
   if (!tabBar) return;
 
   if (!openPatientTabs.has(patientNumber)) {
-    const tabEl = document.createElement("button");
+    var tabEl = document.createElement("button");
     tabEl.className = "patient-tab";
-    tabEl.dataset.patientNumber = patientNumber;
-    tabEl.innerHTML = `
-      <span class="patient-tab-label">${escapeHtml(
-        patient.lastName
-      )}, ${escapeHtml(patient.firstName)}</span>
-      <span class="tab-close" aria-label="Close tab">&times;</span>
-    `;
+    tabEl.setAttribute("data-patient-number", patientNumber);
+    tabEl.innerHTML =
+      '<span class="patient-tab-label">' +
+      escapeHtml(patient.lastName) + ", " + escapeHtml(patient.firstName) +
+      '</span>' +
+      '<span class="tab-close" aria-label="Close tab">&times;</span>';
 
-    tabEl.addEventListener("click", (e) => {
-      if (e.target.closest(".tab-close")) {
+    tabEl.addEventListener("click", function (e) {
+      if (e.target && e.target.classList.contains("tab-close")) {
         e.stopPropagation();
         closePatientTab(patientNumber);
       } else {
@@ -325,33 +283,33 @@ function openPatientTab(patientNumber) {
     tabBar.appendChild(tabEl);
     openPatientTabs.set(patientNumber, tabEl);
   }
-  // No auto-activate here; user clicks tab to open
+  // Do not auto-switch; user must click tab to view
 }
 
 function activatePatientTab(patientNumber) {
-  for (const [id, el] of openPatientTabs.entries()) {
+  openPatientTabs.forEach(function (el, id) {
     if (id === patientNumber) {
       el.classList.add("active");
     } else {
       el.classList.remove("active");
     }
-  }
+  });
 
   loadAndRenderPatientChart(patientNumber);
 }
 
 function closePatientTab(patientNumber) {
-  const tabEl = openPatientTabs.get(patientNumber);
+  var tabEl = openPatientTabs.get(patientNumber);
   if (!tabEl) return;
 
-  const isActive = tabEl.classList.contains("active");
+  var isActive = tabEl.classList.contains("active");
   tabEl.remove();
   openPatientTabs.delete(patientNumber);
 
   if (isActive) {
-    const remaining = Array.from(openPatientTabs.keys());
+    var remaining = Array.from(openPatientTabs.keys());
     if (remaining.length > 0) {
-      const lastId = remaining[remaining.length - 1];
+      var lastId = remaining[remaining.length - 1];
       activatePatientTab(lastId);
     } else {
       setActiveTab("patient-list");
@@ -360,579 +318,312 @@ function closePatientTab(patientNumber) {
   }
 }
 
-/************ PATIENT CHART LOAD + RENDER ************/
+/************ PATIENT CHART + BRAIN (SIMPLE) ************/
 
-async function loadAndRenderPatientChart(patientNumber) {
-  const summaryRow = patientsData.find((p) => p.patientNumber === patientNumber);
-  let chart = null;
-
-  try {
-    const res = await fetch(`data/patients/${patientNumber}.json`);
-    if (res.ok) {
-      chart = await res.json();
+function loadAndRenderPatientChart(patientNumber) {
+  var summaryRow = null;
+  for (var i = 0; i < patientsData.length; i++) {
+    if (patientsData[i].patientNumber === patientNumber) {
+      summaryRow = patientsData[i];
+      break;
     }
-  } catch (err) {
-    console.error("Error loading patient JSON", err);
   }
+  if (!summaryRow) return;
 
-  if (!chart && summaryRow) {
-    chart = buildFallbackChartFromCsv(summaryRow);
-  }
-
+  var chart = patientCharts.get(patientNumber);
   if (!chart) {
-    console.error("No chart or CSV row for patient", patientNumber);
-    return;
+    chart = {
+      patientNumber: summaryRow.patientNumber,
+      demographics: {
+        firstName: summaryRow.firstName,
+        lastName: summaryRow.lastName,
+        gender: summaryRow.gender,
+        dateOfBirth: summaryRow.dob,
+        age: summaryRow.age,
+        weightKg: summaryRow.weight,
+        allergies: summaryRow.allergies || "No Known Allergies",
+        unit: "",
+        room: "",
+        precautions: "None documented"
+      },
+      assignedNurses: []
+    };
+    patientCharts.set(patientNumber, chart);
   }
-
-  if (!chart.assignedNurses) chart.assignedNurses = [];
-  if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
-  if (!chart.demographics && summaryRow) {
-    chart.demographics = buildFallbackChartFromCsv(summaryRow).demographics;
-  }
-  if (chart.demographics && !chart.demographics.precautions) {
-    chart.demographics.precautions = "None documented";
-  }
-
-  patientCharts.set(patientNumber, chart);
 
   renderPatientDetail(chart);
   setActiveView("patient-detail");
   refreshBrainAssignedList();
 }
 
-function buildFallbackChartFromCsv(row) {
-  if (!row) return null;
-  return {
-    patientNumber: row.patientNumber,
-    demographics: {
-      firstName: row.firstName,
-      lastName: row.lastName,
-      gender: row.gender,
-      dateOfBirth: row.dob,
-      age: Number(row.age),
-      weightKg: Number(row.weight),
-      allergies: row.allergies || "No Known Allergies",
-      unit: "",
-      room: "",
-      precautions: "None documented"
-    },
-    diagnoses: [],
-    orders: [],
-    vitalsLog: [],
-    assessments: [],
-    medications: { activeOrders: [], mar: [] },
-    assignedNurses: []
-  };
-}
+function renderPatientDetail(chart) {
+  var container = document.getElementById("patient-detail-content");
+  if (!container) return;
 
-/************ ASSIGN / UNASSIGN (SESSION ONLY) ************/
+  var d = chart.demographics || {};
+  var isAssigned =
+    currentUser &&
+    chart.assignedNurses &&
+    chart.assignedNurses.indexOf(currentUser.username) !== -1;
+
+  var html = "";
+
+  // Banner
+  html += '<section class="patient-banner">';
+  html += '  <div class="patient-banner-main">';
+  html += '    <div class="patient-name-line">' +
+    escapeHtml((d.lastName || "").toUpperCase()) + ", " +
+    escapeHtml(d.firstName || "") + "</div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span>Patient # ' + escapeHtml(chart.patientNumber || "") + "</span>";
+  if (d.age != null && d.age !== "") {
+    html += '      <span>Age: ' + escapeHtml(d.age) + "</span>";
+  }
+  if (d.gender) {
+    html += '      <span>Gender: ' + escapeHtml(d.gender) + "</span>";
+  }
+  html += "    </div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span>DOB: ' + escapeHtml(d.dateOfBirth || "—") + "</span>";
+  html += "    </div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span>Weight: ' + escapeHtml(d.weightKg || "—") + "</span>";
+  html += "    </div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span>Unit: ' + escapeHtml(d.unit || "—") + "</span>";
+  html += '      <span>Room: ' + escapeHtml(d.room || "—") + "</span>";
+  html += "    </div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span class="banner-allergies">Allergies: ' +
+    escapeHtml(d.allergies || "No Known Allergies") + "</span>";
+  html += "    </div>";
+  html += '    <div class="patient-banner-row">';
+  html += '      <span class="banner-precautions">Precautions: ' +
+    escapeHtml(d.precautions || "None documented") + "</span>";
+  html += "    </div>";
+  html += "  </div>";
+  if (currentUser) {
+    html +=
+      '  <button id="assign-btn" class="btn-secondary btn-assign">' +
+      (isAssigned ? "Unassign Me" : "Assign Me") +
+      "</button>";
+  }
+  html += "</section>";
+
+  // Simple placeholder for chart tabs
+  html += '<div class="chart-subnav">';
+  html += '  <button class="chart-tab active" data-chart-view="summary">Summary</button>';
+  html += '  <button class="chart-tab" data-chart-view="orders">Orders</button>';
+  html += '  <button class="chart-tab" data-chart-view="flowsheet">Flowsheet</button>';
+  html += '  <button class="chart-tab" data-chart-view="mar">MAR</button>';
+  html += "</div>";
+
+  html += '<div id="patient-chart-views">';
+  html += '  <div id="chart-summary" class="chart-view active">';
+  html += '    <p class="muted">Summary view placeholder.</p>';
+  html += "  </div>";
+  html += '  <div id="chart-orders" class="chart-view">';
+  html += '    <p class="muted">Orders view coming later.</p>';
+  html += "  </div>";
+  html += '  <div id="chart-flowsheet" class="chart-view">';
+  html += '    <p class="muted">Flowsheet view coming later.</p>';
+  html += "  </div>";
+  html += '  <div id="chart-mar" class="chart-view">';
+  html += '    <p class="muted">MAR view coming later.</p>';
+  html += "  </div>";
+  html += "</div>";
+
+  container.innerHTML = html;
+
+  var assignBtn = document.getElementById("assign-btn");
+  if (assignBtn && currentUser) {
+    assignBtn.addEventListener("click", function () {
+      toggleAssignment(chart.patientNumber);
+    });
+  }
+
+  // internal chart tab switching
+  var chartTabs = container.querySelectorAll(".chart-tab");
+  var chartViews = container.querySelectorAll(".chart-view");
+  for (var i = 0; i < chartTabs.length; i++) {
+    (function (btn) {
+      btn.addEventListener("click", function () {
+        var view = btn.getAttribute("data-chart-view");
+        for (var j = 0; j < chartTabs.length; j++) {
+          chartTabs[j].classList.remove("active");
+        }
+        btn.classList.add("active");
+        for (var k = 0; k < chartViews.length; k++) {
+          chartViews[k].classList.remove("active");
+        }
+        var target = container.querySelector("#chart-" + view);
+        if (target) target.classList.add("active");
+      });
+    })(chartTabs[i]);
+  }
+}
 
 function toggleAssignment(patientNumber) {
   if (!currentUser) return;
-
-  const chart = patientCharts.get(patientNumber);
+  var chart = patientCharts.get(patientNumber);
   if (!chart) return;
 
-  if (!Array.isArray(chart.assignedNurses)) {
-    chart.assignedNurses = [];
-  }
-
-  const uname = currentUser.username;
-  const idx = chart.assignedNurses.indexOf(uname);
-
+  if (!chart.assignedNurses) chart.assignedNurses = [];
+  var idx = chart.assignedNurses.indexOf(currentUser.username);
   if (idx === -1) {
-    chart.assignedNurses.push(uname);
+    chart.assignedNurses.push(currentUser.username);
   } else {
     chart.assignedNurses.splice(idx, 1);
   }
-
   patientCharts.set(patientNumber, chart);
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
 
-/************ BRAIN: ASSIGNED PATIENTS ************/
-
 function refreshBrainAssignedList() {
-  const container = document.getElementById("brain-assigned-list");
+  var container = document.getElementById("brain-assigned-list");
   if (!container) return;
 
   if (!currentUser) {
-    container.innerHTML = `<p class="muted">Not logged in.</p>`;
+    container.innerHTML = '<p class="muted">Not logged in.</p>';
     return;
   }
 
-  const assigned = [];
-
-  for (const chart of patientCharts.values()) {
+  var rows = "";
+  patientCharts.forEach(function (chart) {
     if (
-      Array.isArray(chart.assignedNurses) &&
-      chart.assignedNurses.includes(currentUser.username)
+      chart.assignedNurses &&
+      chart.assignedNurses.indexOf(currentUser.username) !== -1
     ) {
-      assigned.push(chart);
+      var d = chart.demographics || {};
+      var name =
+        escapeHtml((d.lastName || "").toUpperCase()) +
+        ", " + escapeHtml(d.firstName || "");
+      rows +=
+        '<tr data-patient-number="' + escapeHtml(chart.patientNumber) + '">' +
+        "<td>" + escapeHtml(chart.patientNumber) + "</td>" +
+        "<td>" + name + "</td>" +
+        "<td>" + escapeHtml(d.unit || "") + "</td>" +
+        "<td>" + escapeHtml(d.room || "") + "</td>" +
+        "</tr>";
     }
-  }
+  });
 
-  if (assigned.length === 0) {
+  if (!rows) {
     container.innerHTML =
-      `<p class="muted">You are not currently assigned to any patients.</p>`;
+      '<p class="muted">You are not currently assigned to any patients.</p>';
     return;
   }
 
-  const rows = assigned
-    .map((chart) => {
-      const d = chart.demographics || {};
-      const name = `${(d.lastName || "").toUpperCase()}, ${
-        d.firstName || ""
-      }`;
-      const unit = d.unit || "";
-      const room = d.room || "";
-      return `
-        <tr data-patient-number="${chart.patientNumber}">
-          <td>${chart.patientNumber}</td>
-          <td>${name}</td>
-          <td>${unit}</td>
-          <td>${room}</td>
-        </tr>
-      `;
+  var html = "";
+  html += '<div class="table-wrapper">';
+  html += '  <table class="patient-table">';
+  html += "    <thead>";
+  html += "      <tr>";
+  html += "        <th>Patient #</th>";
+  html += "        <th>Name</th>";
+  html += "        <th>Unit</th>";
+  html += "        <th>Room</th>";
+  html += "      </tr>";
+  html += "    </thead>";
+  html += "    <tbody>";
+  html += rows;
+  html += "    </tbody>";
+  html += "  </table>";
+  html += "</div>";
+
+  container.innerHTML = html;
+
+  var trs = container.querySelectorAll("tbody tr");
+  for (var i = 0; i < trs.length; i++) {
+    (function (tr) {
+      var pn = tr.getAttribute("data-patient-number");
+      tr.addEventListener("click", function () {
+        if (!pn) return;
+        openPatientTab(pn);
+        activatePatientTab(pn);
+      });
+    })(trs[i]);
+  }
+}
+
+/************ DRUG MANUAL (SIMPLE) ************/
+
+function loadDrugs() {
+  fetch("data/drugs/drugs.json")
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
     })
-    .join("");
-
-  container.innerHTML = `
-    <div class="table-wrapper">
-      <table class="patient-table">
-        <thead>
-          <tr>
-            <th>Patient #</th>
-            <th>Name</th>
-            <th>Unit</th>
-            <th>Room</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  container.querySelectorAll("tbody tr").forEach((tr) => {
-    const pn = tr.dataset.patientNumber;
-    tr.addEventListener("click", () => {
-      if (!pn) return;
-      openPatientTab(pn);
-      activatePatientTab(pn);
-    });
-  });
-}
-
-/************ PATIENT DETAIL + INTERNAL TABS ************/
-
-function renderPatientDetail(chart) {
-  if (!chart) return;
-  const container = document.getElementById("patient-detail-content");
-  if (!container) return;
-
-  const d = chart.demographics || {};
-  const diagnoses = chart.diagnoses || [];
-  const primaryDx = diagnoses.length ? diagnoses[0].description : "N/A";
-
-  const isAssigned =
-    currentUser &&
-    Array.isArray(chart.assignedNurses) &&
-    chart.assignedNurses.includes(currentUser.username);
-
-  const isAdmin = currentUser && currentUser.role === "admin";
-
-  const lastName = d.lastName || "";
-  const firstName = d.firstName || "";
-  const age = d.age != null ? d.age : "";
-  const gender = d.gender || "";
-  const dob = d.dateOfBirth || "";
-  const weight = d.weightKg != null ? d.weightKg + " kg" : "";
-  const unit = d.unit || "";
-  const room = d.room || "";
-  const allergies = d.allergies || "No Known Allergies";
-  const precautions = d.precautions || "None documented";
-
-  container.innerHTML = `
-    <section class="patient-banner">
-      <div class="patient-banner-main">
-        <div class="patient-name-line">
-          ${escapeHtml(lastName).toUpperCase()}, ${escapeHtml(firstName)}
-        </div>
-        <div class="patient-banner-row">
-          <span>Patient # ${chart.patientNumber || ""}</span>
-          ${age !== "" ? `<span>Age: ${age}</span>` : ""}
-          ${gender ? `<span>Gender: ${escapeHtml(gender)}</span>` : ""}
-        </div>
-        <div class="patient-banner-row">
-          <span>DOB: ${escapeHtml(dob || "—")}</span>
-        </div>
-        <div class="patient-banner-row">
-          <span>Weight: ${escapeHtml(weight || "—")}</span>
-        </div>
-        <div class="patient-banner-row">
-          <span>Unit: ${escapeHtml(unit || "—")}</span>
-          <span>Room: ${escapeHtml(room || "—")}</span>
-        </div>
-        <div class="patient-banner-row">
-          <span class="banner-allergies">
-            Allergies: ${escapeHtml(allergies)}
-          </span>
-        </div>
-        <div class="patient-banner-row">
-          <span class="banner-precautions">
-            Precautions: ${escapeHtml(precautions)}
-          </span>
-        </div>
-      </div>
-      ${
-        currentUser
-          ? `<button id="assign-btn" class="btn-secondary btn-assign">
-               ${isAssigned ? "Unassign Me" : "Assign Me"}
-             </button>`
-          : ""
-      }
-    </section>
-
-    <div class="chart-subnav">
-      <button class="chart-tab active" data-chart-view="summary">Summary</button>
-      <button class="chart-tab" data-chart-view="orders">Orders</button>
-      <button class="chart-tab" data-chart-view="flowsheet">Flowsheet</button>
-      <button class="chart-tab" data-chart-view="mar">MAR</button>
-    </div>
-
-    <div id="patient-chart-views">
-      <div id="chart-summary" class="chart-view active">
-        <section class="patient-info-grid">
-          <div class="info-item">
-            <div class="info-label">First Name</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-first-name" value="${escapeHtml(
-                      firstName
-                    )}">`
-                  : escapeHtml(firstName)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Last Name</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-last-name" value="${escapeHtml(
-                      lastName
-                    )}">`
-                  : escapeHtml(lastName)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Date of Birth</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-dob" value="${escapeHtml(dob)}">`
-                  : escapeHtml(dob)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Age</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-age" type="number" value="${age}">`
-                  : age
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Weight (kg)</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-weight" type="number" step="0.1" value="${
-                      d.weightKg ?? ""
-                    }">`
-                  : weight
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Gender</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-gender" value="${escapeHtml(gender)}">`
-                  : escapeHtml(gender)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Allergies</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-allergies" value="${escapeHtml(
-                      allergies
-                    )}">`
-                  : `<span class="banner-allergies">${escapeHtml(
-                      allergies
-                    )}</span>`
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Precautions</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-precautions" value="${escapeHtml(
-                      precautions
-                    )}">`
-                  : `<span class="banner-precautions">${escapeHtml(
-                      precautions
-                    )}</span>`
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Unit</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-unit" value="${escapeHtml(unit)}">`
-                  : escapeHtml(unit)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Room</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-room" value="${escapeHtml(room)}">`
-                  : escapeHtml(room)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Primary Diagnosis</div>
-            <div class="info-value">
-              ${
-                isAdmin
-                  ? `<input id="edit-primary-dx" value="${escapeHtml(
-                      primaryDx || ""
-                    )}">`
-                  : escapeHtml(primaryDx)
-              }
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">Active Orders</div>
-            <div class="info-value">${(chart.orders || []).length}</div>
-          </div>
-
-          <div class="info-item">
-            <div class="info-label">MAR Entries</div>
-            <div class="info-value">${
-              (chart.medications?.mar || []).length
-            }</div>
-          </div>
-        </section>
-
-        ${
-          isAdmin
-            ? `<div class="info-item" style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-                 <button id="save-patient-btn" class="btn-primary" style="width:auto;padding-inline:1.25rem;">
-                   Save Changes
-                 </button>
-                 <button id="export-patient-btn" class="btn-secondary" style="width:auto;padding-inline:1.25rem;">
-                   Export JSON
-                 </button>
-               </div>`
-            : ""
-        }
-      </div>
-
-      <div id="chart-orders" class="chart-view">
-        <p class="muted">Orders view coming soon.</p>
-      </div>
-
-      <div id="chart-flowsheet" class="chart-view">
-        <p class="muted">Flowsheet view coming soon.</p>
-      </div>
-
-      <div id="chart-mar" class="chart-view">
-        <p class="muted">MAR view coming soon.</p>
-      </div>
-    </div>
-  `;
-
-  const assignBtn = document.getElementById("assign-btn");
-  if (assignBtn && currentUser) {
-    assignBtn.addEventListener("click", () => {
-      toggleAssignment(chart.patientNumber);
-    });
-  }
-
-  const chartTabs = container.querySelectorAll(".chart-tab");
-  const chartViews = container.querySelectorAll(".chart-view");
-  chartTabs.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      chartTabs.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      const view = btn.dataset.chartView;
-      chartViews.forEach((v) => v.classList.remove("active"));
-      const activeView = container.querySelector(`#chart-${view}`);
-      if (activeView) activeView.classList.add("active");
-    });
-  });
-
-  if (isAdmin) {
-    const saveBtn = document.getElementById("save-patient-btn");
-    const exportBtn = document.getElementById("export-patient-btn");
-
-    const applyAdminEdits = () => {
-      const d2 = chart.demographics || {};
-      const getVal = (id) => {
-        const el = document.getElementById(id);
-        return el ? el.value.trim() : "";
-      };
-
-      d2.firstName = getVal("edit-first-name");
-      d2.lastName = getVal("edit-last-name");
-      d2.dateOfBirth = getVal("edit-dob");
-
-      const ageVal = getVal("edit-age");
-      d2.age = ageVal ? Number(ageVal) : null;
-
-      const weightVal = getVal("edit-weight");
-      d2.weightKg = weightVal ? Number(weightVal) : null;
-
-      d2.gender = getVal("edit-gender");
-      d2.allergies = getVal("edit-allergies") || "No Known Allergies";
-      d2.precautions = getVal("edit-precautions") || "None documented";
-      d2.unit = getVal("edit-unit");
-      d2.room = getVal("edit-room");
-      chart.demographics = d2;
-
-      const newPrimaryDx = getVal("edit-primary-dx");
-      if (!chart.diagnoses) chart.diagnoses = [];
-      if (chart.diagnoses.length === 0 && newPrimaryDx) {
-        chart.diagnoses.push({
-          code: "",
-          description: newPrimaryDx,
-          type: "Medical",
-          status: "Active",
-          onset: ""
-        });
-      } else if (chart.diagnoses.length > 0) {
-        chart.diagnoses[0].description = newPrimaryDx;
-      }
-    };
-
-    if (saveBtn) {
-      saveBtn.addEventListener("click", () => {
-        applyAdminEdits();
-        patientCharts.set(chart.patientNumber, chart);
-        renderPatientDetail(chart);
-        refreshBrainAssignedList();
+    .then(function (data) {
+      if (!Array.isArray(data)) data = [];
+      data.sort(function (a, b) {
+        return (a.name || "").localeCompare(b.name || "");
       });
-    }
-
-    if (exportBtn) {
-      exportBtn.addEventListener("click", () => {
-        applyAdminEdits();
-        patientCharts.set(chart.patientNumber, chart);
-        exportChartAsJson(chart);
-      });
-    }
-  }
-}
-
-/************ DRUG MANUAL ************/
-
-async function loadDrugs() {
-  try {
-    const res = await fetch("data/drugs/drugs.json");
-    if (!res.ok) {
-      console.error("Failed to load drugs.json", res.status);
-      return;
-    }
-    const data = await res.json();
-    drugsList = (data || []).slice().sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-    renderDrugList();
-  } catch (err) {
-    console.error("Error loading drug manifest", err);
-  }
+      drugsList = data;
+      renderDrugList();
+    })
+    .catch(function (err) {
+      // If file doesn't exist, just log and don't break anything
+      console.warn("Error loading drugs.json:", err);
+    });
 }
 
 function renderDrugList() {
-  const container = document.getElementById("drug-list");
+  var container = document.getElementById("drug-list");
   if (!container) return;
 
-  if (!drugsList || drugsList.length === 0) {
-    container.innerHTML = `<p class="muted">No drugs loaded.</p>`;
+  if (!drugsList.length) {
+    container.innerHTML = '<p class="muted">No drugs loaded.</p>';
     return;
   }
 
-  container.innerHTML = drugsList
-    .map(
-      (d) => `
-      <button class="drug-list-item" data-drug-id="${d.id}">
-        ${escapeHtml(d.name)}
-      </button>
-    `
-    )
-    .join("");
+  var html = "";
+  for (var i = 0; i < drugsList.length; i++) {
+    var d = drugsList[i];
+    html +=
+      '<button class="drug-list-item" data-drug-id="' + escapeHtml(d.id) + '">' +
+      escapeHtml(d.name) +
+      "</button>";
+  }
+  container.innerHTML = html;
 
-  container.querySelectorAll(".drug-list-item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.drugId;
-      if (!id) return;
-      openDrugTab(id);
-      activateDrugTab(id);
-    });
-  });
+  var buttons = container.querySelectorAll(".drug-list-item");
+  for (var j = 0; j < buttons.length; j++) {
+    (function (btn) {
+      var id = btn.getAttribute("data-drug-id");
+      btn.addEventListener("click", function () {
+        if (!id) return;
+        openDrugTab(id);
+        activateDrugTab(id);
+      });
+    })(buttons[j]);
+  }
 }
 
 function openDrugTab(drugId) {
-  const drug = drugsList.find((d) => d.id === drugId);
+  var drug = null;
+  for (var i = 0; i < drugsList.length; i++) {
+    if (drugsList[i].id === drugId) {
+      drug = drugsList[i];
+      break;
+    }
+  }
   if (!drug) return;
 
-  const tabBar = document.getElementById("drug-tab-bar");
+  var tabBar = document.getElementById("drug-tab-bar");
   if (!tabBar) return;
 
   if (!openDrugTabs.has(drugId)) {
-    const tabEl = document.createElement("button");
+    var tabEl = document.createElement("button");
     tabEl.className = "drug-tab";
-    tabEl.dataset.drugId = drugId;
-    tabEl.innerHTML = `
-      <span class="drug-tab-label">${escapeHtml(drug.name)}</span>
-      <span class="drug-tab-close" aria-label="Close tab">&times;</span>
-    `;
+    tabEl.setAttribute("data-drug-id", drugId);
+    tabEl.innerHTML =
+      '<span class="drug-tab-label">' + escapeHtml(drug.name) + "</span>" +
+      '<span class="drug-tab-close" aria-label="Close tab">&times;</span>';
 
-    tabEl.addEventListener("click", (e) => {
-      if (e.target.closest(".drug-tab-close")) {
+    tabEl.addEventListener("click", function (e) {
+      if (e.target && e.target.classList.contains("drug-tab-close")) {
         e.stopPropagation();
         closeDrugTab(drugId);
       } else {
@@ -946,32 +637,31 @@ function openDrugTab(drugId) {
 }
 
 function activateDrugTab(drugId) {
-  for (const [id, el] of openDrugTabs.entries()) {
+  openDrugTabs.forEach(function (el, id) {
     if (id === drugId) {
       el.classList.add("active");
     } else {
       el.classList.remove("active");
     }
-  }
-
+  });
   loadAndRenderDrug(drugId);
 }
 
 function closeDrugTab(drugId) {
-  const tabEl = openDrugTabs.get(drugId);
+  var tabEl = openDrugTabs.get(drugId);
   if (!tabEl) return;
 
-  const isActive = tabEl.classList.contains("active");
+  var isActive = tabEl.classList.contains("active");
   tabEl.remove();
   openDrugTabs.delete(drugId);
 
-  const detail = document.getElementById("drug-detail-content");
+  var detail = document.getElementById("drug-detail-content");
   if (!detail) return;
 
   if (isActive) {
-    const remaining = Array.from(openDrugTabs.keys());
+    var remaining = Array.from(openDrugTabs.keys());
     if (remaining.length > 0) {
-      const last = remaining[remaining.length - 1];
+      var last = remaining[remaining.length - 1];
       activateDrugTab(last);
     } else {
       detail.innerHTML =
@@ -980,130 +670,112 @@ function closeDrugTab(drugId) {
   }
 }
 
-async function loadAndRenderDrug(drugId) {
-  if (!drugId) return;
-
-  let drug = drugDetails.get(drugId);
-  if (!drug) {
-    try {
-      const res = await fetch(`data/drugs/${drugId}.json`);
-      if (!res.ok) {
-        console.error("Failed to load drug file for", drugId, res.status);
-        return;
-      }
-      drug = await res.json();
-      drugDetails.set(drugId, drug);
-    } catch (err) {
-      console.error("Error loading drug JSON", err);
-      return;
-    }
+function loadAndRenderDrug(drugId) {
+  var cached = drugDetails.get(drugId);
+  if (cached) {
+    renderDrugDetail(cached);
+    return;
   }
 
-  renderDrugDetail(drug);
+  fetch("data/drugs/" + drugId + ".json")
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (json) {
+      drugDetails.set(drugId, json);
+      renderDrugDetail(json);
+    })
+    .catch(function (err) {
+      console.error("Error loading drug file:", err);
+    });
 }
 
 function renderDrugDetail(drug) {
-  const container = document.getElementById("drug-detail-content");
+  var container = document.getElementById("drug-detail-content");
   if (!container) return;
 
-  const name = drug.name || "";
-  const klass = drug.class || "";
-  const summary = drug.summary || "";
-  const indications = drug.indications || [];
-  const sideEffects = drug.sideEffects || [];
-  const cautions = drug.cautions || [];
-  const compatibility = drug.compatibility || {};
-  const standardDose = drug.standardDose || "See institutional guidelines.";
-  const minSafe = drug.minSafeDoseMgPerKgPerDay;
-  const maxSafe = drug.maxSafeDoseMgPerKgPerDay;
+  var name = drug.name || "";
+  var klass = drug["class"] || "";
+  var summary = drug.summary || "";
+  var indications = drug.indications || [];
+  var sideEffects = drug.sideEffects || [];
+  var cautions = drug.cautions || [];
+  var compatibility = drug.compatibility || {};
+  var standardDose = drug.standardDose || "See institutional guidelines.";
 
-  container.innerHTML = `
-    <div class="drug-card">
-      <h3 class="drug-name">${escapeHtml(name)}</h3>
-      <p class="drug-class">${escapeHtml(klass)}</p>
+  var html = "";
+  html += '<div class="drug-card">';
+  html += '  <h3 class="drug-name">' + escapeHtml(name) + "</h3>";
+  html += '  <p class="drug-class">' + escapeHtml(klass) + "</p>";
 
-      <section class="drug-section">
-        <h4>Summary</h4>
-        <p>${escapeHtml(summary)}</p>
-      </section>
+  html += '  <section class="drug-section">';
+  html += "    <h4>Summary</h4>";
+  html += "    <p>" + escapeHtml(summary) + "</p>";
+  html += "  </section>";
 
-      <section class="drug-section">
-        <h4>Indications</h4>
-        ${
-          indications.length
-            ? `<ul>${indications
-                .map((i) => `<li>${escapeHtml(i)}</li>`)
-                .join("")}</ul>`
-            : `<p class="muted">No indications listed.</p>`
-        }
-      </section>
+  html += '  <section class="drug-section">';
+  html += "    <h4>Indications</h4>";
+  if (indications.length) {
+    html += "    <ul>";
+    for (var i = 0; i < indications.length; i++) {
+      html += "      <li>" + escapeHtml(indications[i]) + "</li>";
+    }
+    html += "    </ul>";
+  } else {
+    html += '    <p class="muted">No indications listed.</p>';
+  }
+  html += "  </section>";
 
-      <section class="drug-section">
-        <h4>Side Effects</h4>
-        ${
-          sideEffects.length
-            ? `<ul>${sideEffects
-                .map((s) => `<li>${escapeHtml(s)}</li>`)
-                .join("")}</ul>`
-            : `<p class="muted">No side effects listed.</p>`
-        }
-      </section>
+  html += '  <section class="drug-section">';
+  html += "    <h4>Side Effects</h4>";
+  if (sideEffects.length) {
+    html += "    <ul>";
+    for (var j = 0; j < sideEffects.length; j++) {
+      html += "      <li>" + escapeHtml(sideEffects[j]) + "</li>";
+    }
+    html += "    </ul>";
+  } else {
+    html += '    <p class="muted">No side effects listed.</p>';
+  }
+  html += "  </section>";
 
-      <section class="drug-section">
-        <h4>Cautions</h4>
-        ${
-          cautions.length
-            ? `<ul>${cautions
-                .map((c) => `<li>${escapeHtml(c)}</li>`)
-                .join("")}</ul>`
-            : `<p class="muted">No cautions listed.</p>`
-        }
-      </section>
+  html += '  <section class="drug-section">';
+  html += "    <h4>Cautions</h4>";
+  if (cautions.length) {
+    html += "    <ul>";
+    for (var k = 0; k < cautions.length; k++) {
+      html += "      <li>" + escapeHtml(cautions[k]) + "</li>";
+    }
+    html += "    </ul>";
+  } else {
+    html += '    <p class="muted">No cautions listed.</p>';
+  }
+  html += "  </section>";
 
-      <section class="drug-section">
-        <h4>Compatibility</h4>
-        <ul>
-          ${
-            compatibility.iv
-              ? `<li><strong>IV:</strong> ${escapeHtml(compatibility.iv)}</li>`
-              : ""
-          }
-          ${
-            compatibility.oral
-              ? `<li><strong>Oral:</strong> ${escapeHtml(
-                  compatibility.oral
-                )}</li>`
-              : ""
-          }
-          ${
-            compatibility.other
-              ? `<li><strong>Other:</strong> ${escapeHtml(
-                  compatibility.other
-                )}</li>`
-              : ""
-          }
-        </ul>
-      </section>
+  html += '  <section class="drug-section">';
+  html += "    <h4>Compatibility</h4>";
+  html += "    <ul>";
+  if (compatibility.iv) {
+    html += "      <li><strong>IV:</strong> " + escapeHtml(compatibility.iv) + "</li>";
+  }
+  if (compatibility.oral) {
+    html += "      <li><strong>Oral:</strong> " + escapeHtml(compatibility.oral) + "</li>";
+  }
+  if (compatibility.other) {
+    html += "      <li><strong>Other:</strong> " + escapeHtml(compatibility.other) + "</li>";
+  }
+  html += "    </ul>";
+  html += "  </section>";
 
-      <section class="drug-section">
-        <h4>Dosing (Educational Only)</h4>
-        <p><strong>Standard order example:</strong> ${escapeHtml(
-          standardDose
-        )}</p>
-        <p class="muted">
-          Min/Max mg/kg/day are intentionally left null here and should be filled
-          from a trusted institutional or pharmacology reference when you build
-          scenarios.
-        </p>
-        <ul>
-          <li><strong>Min safe (mg/kg/day):</strong> ${
-            minSafe != null ? minSafe : "–"
-          }</li>
-          <li><strong>Max safe (mg/kg/day):</strong> ${
-            maxSafe != null ? maxSafe : "–"
-          }</li>
-        </ul>
-      </section>
-    </div>
-  `;
+  html += '  <section class="drug-section">';
+  html += "    <h4>Dosing (Educational Only)</h4>";
+  html += "    <p><strong>Standard order example:</strong> " +
+    escapeHtml(standardDose) + "</p>";
+  html += '    <p class="muted">Exact mg/kg dosing should be filled from a trusted reference when you build scenarios.</p>';
+  html += "  </section>";
+
+  html += "</div>";
+
+  container.innerHTML = html;
 }

@@ -3,7 +3,8 @@ import { Auth } from "./auth.js";
 
 let patientsData = [];                     // from patients.csv
 const openPatientTabs = new Map();         // patientNumber -> tab element
-const patientCharts = new Map();           // patientNumber -> full chart JSON
+const patientCharts = new Map();           // patientNumber -> full chart JSON (with runtime fields)
+let currentUser = null;                    // { username, role, ... }
 
 document.addEventListener("DOMContentLoaded", () => {
   Auth.init();
@@ -44,7 +45,11 @@ function setupNav() {
 
   logoutBtn.addEventListener("click", () => {
     Auth.logout();
+    currentUser = null;
+    patientCharts.clear();
+    openPatientTabs.clear();
     showLoginScreen();
+    refreshBrainAssignedList(); // clears view
   });
 
   navTabs.forEach((tab) => {
@@ -73,14 +78,19 @@ function showMainApp(user) {
   const mainApp = document.getElementById("main-app");
   const usernameDisplay = document.getElementById("nav-username");
 
+  currentUser = user;
+
   loginScreen.classList.remove("active");
   mainApp.classList.add("active");
 
-  usernameDisplay.textContent = user.username;
+  if (usernameDisplay) {
+    usernameDisplay.textContent = user.username;
+  }
 
-  // Default view
+  // Default view: Brain
   setActiveView("brain");
   setActiveTab("brain");
+  refreshBrainAssignedList();
 }
 
 function showLoginScreen() {
@@ -282,11 +292,17 @@ async function loadAndRenderPatientChart(patientNumber) {
       chart = buildFallbackChartFromCsv(summaryRow);
     }
 
+    // Ensure assignedNurses exists for runtime tracking
+    if (!Array.isArray(chart.assignedNurses)) {
+      chart.assignedNurses = [];
+    }
+
     patientCharts.set(patientNumber, chart);
   }
 
   renderPatientDetail(chart);
   setActiveView("patient-detail");
+  refreshBrainAssignedList();
 }
 
 function buildFallbackChartFromCsv(row) {
@@ -308,8 +324,108 @@ function buildFallbackChartFromCsv(row) {
     orders: [],
     vitalsLog: [],
     assessments: [],
-    medications: { activeOrders: [], mar: [] }
+    medications: { activeOrders: [], mar: [] },
+    assignedNurses: []
   };
+}
+
+/* ---------- ASSIGN / UNASSIGN LOGIC ---------- */
+
+function toggleAssignment(patientNumber) {
+  if (!currentUser) return;
+
+  const chart = patientCharts.get(patientNumber);
+  if (!chart) return;
+
+  if (!Array.isArray(chart.assignedNurses)) {
+    chart.assignedNurses = [];
+  }
+
+  const uname = currentUser.username;
+  const idx = chart.assignedNurses.indexOf(uname);
+
+  if (idx === -1) {
+    chart.assignedNurses.push(uname);
+  } else {
+    chart.assignedNurses.splice(idx, 1);
+  }
+
+  // Re-render detail to update button label
+  renderPatientDetail(chart);
+  refreshBrainAssignedList();
+}
+
+/* ---------- BRAIN: MY ASSIGNED PATIENTS ---------- */
+
+function refreshBrainAssignedList() {
+  const container = document.getElementById("brain-assigned-list");
+  if (!container) return;
+
+  if (!currentUser) {
+    container.innerHTML = `<p class="muted">Not logged in.</p>`;
+    return;
+  }
+
+  const assigned = [];
+
+  for (const chart of patientCharts.values()) {
+    if (
+      Array.isArray(chart.assignedNurses) &&
+      chart.assignedNurses.includes(currentUser.username)
+    ) {
+      assigned.push(chart);
+    }
+  }
+
+  if (assigned.length === 0) {
+    container.innerHTML = `<p class="muted">You are not currently assigned to any patients.</p>`;
+    return;
+  }
+
+  const rows = assigned
+    .map((chart) => {
+      const d = chart.demographics || {};
+      const name = `${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}`;
+      const unit = d.unit || "";
+      const room = d.room || "";
+      return `
+        <tr data-patient-number="${chart.patientNumber}">
+          <td>${chart.patientNumber}</td>
+          <td>${name}</td>
+          <td>${unit}</td>
+          <td>${room}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="patient-table">
+        <thead>
+          <tr>
+            <th>Patient #</th>
+            <th>Name</th>
+            <th>Unit</th>
+            <th>Room</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Clicking a row in the Brain list opens & activates that patient tab
+  container.querySelectorAll("tbody tr").forEach((tr) => {
+    const pn = tr.dataset.patientNumber;
+    tr.addEventListener("click", () => {
+      if (!pn) return;
+      openPatientTab(pn);
+      activatePatientTab(pn);
+    });
+  });
 }
 
 /* ---------- PATIENT DETAIL RENDERING ---------- */
@@ -324,15 +440,27 @@ function renderPatientDetail(chart) {
   const diagnoses = chart.diagnoses || [];
   const primaryDx = diagnoses.length ? diagnoses[0].description : "N/A";
 
+  const isAssigned =
+    currentUser &&
+    Array.isArray(chart.assignedNurses) &&
+    chart.assignedNurses.includes(currentUser.username);
+
   container.innerHTML = `
     <section class="patient-banner">
-      <div class="patient-name">${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}</div>
-      <div class="patient-meta">
-        <span>Patient # ${chart.patientNumber || ""}</span>
-        ${d.gender ? `<span>Gender: ${d.gender}</span>` : ""}
-        ${d.unit ? `<span>Unit: ${d.unit}</span>` : ""}
-        ${d.room ? `<span>Room: ${d.room}</span>` : ""}
+      <div class="patient-banner-main">
+        <div class="patient-name">${(d.lastName || "").toUpperCase()}, ${
+    d.firstName || ""
+  }</div>
+        <div class="patient-meta">
+          <span>Patient # ${chart.patientNumber || ""}</span>
+          ${d.gender ? `<span>Gender: ${d.gender}</span>` : ""}
+          ${d.unit ? `<span>Unit: ${d.unit}</span>` : ""}
+          ${d.room ? `<span>Room: ${d.room}</span>` : ""}
+        </div>
       </div>
+      <button id="assign-btn" class="btn-secondary btn-assign">
+        ${isAssigned ? "Unassign Me" : "Assign Me"}
+      </button>
     </section>
 
     <section class="patient-info-grid">
@@ -348,12 +476,16 @@ function renderPatientDetail(chart) {
 
       <div class="info-item">
         <div class="info-label">Weight</div>
-        <div class="info-value">${d.weightKg != null ? d.weightKg + " kg" : ""}</div>
+        <div class="info-value">${
+          d.weightKg != null ? d.weightKg + " kg" : ""
+        }</div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Allergies</div>
-        <div class="info-value">${d.allergies || "No Known Allergies"}</div>
+        <div class="info-value">${
+          d.allergies || "No Known Allergies"
+        }</div>
       </div>
 
       <div class="info-item">
@@ -368,8 +500,18 @@ function renderPatientDetail(chart) {
 
       <div class="info-item">
         <div class="info-label">MAR Entries</div>
-        <div class="info-value">${(chart.medications?.mar || []).length}</div>
+        <div class="info-value">${
+          (chart.medications?.mar || []).length
+        }</div>
       </div>
     </section>
   `;
+
+  // Hook up Assign/Unassign button
+  const assignBtn = document.getElementById("assign-btn");
+  if (assignBtn && currentUser) {
+    assignBtn.addEventListener("click", () => {
+      toggleAssignment(chart.patientNumber);
+    });
+  }
 }

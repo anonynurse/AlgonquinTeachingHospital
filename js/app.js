@@ -1,42 +1,26 @@
 // js/app.js
 import { Auth } from "./auth.js";
 
-let patientsData = [];                     // from patients.csv
-const openPatientTabs = new Map();         // patientNumber -> tab element
-const patientCharts = new Map();           // patientNumber -> full chart JSON
-let currentUser = null;                    // { username, role }
+let patientsData = [];             // from patients.csv
+const openPatientTabs = new Map(); // patientNumber -> tab element
+const patientCharts = new Map();   // patientNumber -> chart JSON
+let currentUser = null;            // { username, role }
 
-const PATIENT_STORAGE_PREFIX = "adh_patient_chart_";
+/* ---------- UTIL ---------- */
 
-/* ---------- LOCAL PERSISTENCE HELPERS ---------- */
-
-function loadChartFromLocal(patientNumber) {
-  const key = PATIENT_STORAGE_PREFIX + patientNumber;
-  const raw = localStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn("Failed to parse local chart for", patientNumber, e);
-    return null;
-  }
-}
-
-function saveChartToLocal(chart) {
-  if (!chart || !chart.patientNumber) return;
-  const key = PATIENT_STORAGE_PREFIX + chart.patientNumber;
-  try {
-    localStorage.setItem(key, JSON.stringify(chart));
-  } catch (e) {
-    console.error("Failed to save chart to localStorage", e);
-  }
+function escapeHtml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function exportChartAsJson(chart) {
   if (!chart) return;
   const filename = `${chart.patientNumber || "patient"}.json`;
   const blob = new Blob([JSON.stringify(chart, null, 2)], {
-    type: "application/json"
+    type: "application/json",
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -46,17 +30,6 @@ function exportChartAsJson(chart) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-/* ---------- BASIC UTIL ---------- */
-
-function escapeHtml(str = "") {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 /* ---------- ENTRY POINT ---------- */
@@ -104,8 +77,13 @@ function setupNav() {
     logoutBtn.addEventListener("click", () => {
       Auth.logout();
       currentUser = null;
+      // Clear in-memory state
       patientCharts.clear();
       openPatientTabs.clear();
+      // Clear patient tab DOM
+      const tabBar = document.getElementById("patient-tab-bar");
+      if (tabBar) tabBar.innerHTML = "";
+
       showLoginScreen();
       refreshBrainAssignedList();
     });
@@ -116,7 +94,7 @@ function setupNav() {
       navTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
 
-      const viewName = tab.dataset.view; // "brain", "patient-list", etc.
+      const viewName = tab.dataset.view; // "brain", "patient-list", "drug-manual"
       setActiveView(viewName);
     });
   });
@@ -142,8 +120,16 @@ function showMainApp(user) {
   if (mainApp) mainApp.classList.add("active");
   if (usernameDisplay) usernameDisplay.textContent = user.username;
 
+  // Start each login fresh: Brain view, no patient tabs open
   setActiveView("brain");
   setActiveTab("brain");
+
+  // Ensure tab bar is empty at login
+  const tabBar = document.getElementById("patient-tab-bar");
+  if (tabBar) tabBar.innerHTML = "";
+  openPatientTabs.clear();
+  patientCharts.clear();
+
   refreshBrainAssignedList();
 }
 
@@ -189,7 +175,6 @@ async function loadPatients() {
     const text = await res.text();
     patientsData = parsePatientsCsv(text);
     renderPatientList();
-    // After patientsData exists, refresh brain list (in case user already logged in)
     refreshBrainAssignedList();
   } catch (err) {
     console.error("Error loading patients.csv", err);
@@ -213,7 +198,7 @@ function parsePatientsCsv(text) {
         dob: cols[4],
         age: cols[5],
         weight: cols[6],
-        allergies: cols[7] ?? ""
+        allergies: cols[7] ?? "",
       };
     });
 }
@@ -251,9 +236,7 @@ function renderPatientList() {
 /* ---------- PATIENT TABS (SECOND ROW) ---------- */
 
 function openPatientTab(patientNumber) {
-  const patient = patientsData.find(
-    (p) => p.patientNumber === patientNumber
-  );
+  const patient = patientsData.find((p) => p.patientNumber === patientNumber);
   if (!patient) return;
 
   const tabBar = document.getElementById("patient-tab-bar");
@@ -269,7 +252,6 @@ function openPatientTab(patientNumber) {
     `;
 
     tabEl.addEventListener("click", (e) => {
-      // Use closest so clicks right on or near the X work reliably
       if (e.target.closest(".tab-close")) {
         e.stopPropagation();
         closePatientTab(patientNumber);
@@ -282,7 +264,7 @@ function openPatientTab(patientNumber) {
     openPatientTabs.set(patientNumber, tabEl);
   }
 
-  // Do NOT activate automatically when row clicked.
+  // DO NOT auto-activate; user must click the tab itself.
 }
 
 function activatePatientTab(patientNumber) {
@@ -320,29 +302,24 @@ function closePatientTab(patientNumber) {
 /* ---------- LOAD & RENDER PATIENT CHART ---------- */
 
 async function loadAndRenderPatientChart(patientNumber) {
-  const summaryRow = patientsData.find(
-    (p) => p.patientNumber === patientNumber
-  );
+  const summaryRow = patientsData.find((p) => p.patientNumber === patientNumber);
 
-  // 1) Try overridden chart from localStorage
-  let chart = loadChartFromLocal(patientNumber);
+  let chart = null;
 
-  // 2) If none, fetch base JSON or fallback to CSV
-  if (!chart) {
-    try {
-      const res = await fetch(`data/patients/${patientNumber}.json`);
-      if (res.ok) {
-        chart = await res.json();
-      } else {
-        console.warn(
-          `No JSON chart found for patient ${patientNumber}, using CSV only.`
-        );
-        chart = buildFallbackChartFromCsv(summaryRow);
-      }
-    } catch (err) {
-      console.error("Error loading patient chart JSON", err);
+  // Always load fresh from JSON/CSV each session
+  try {
+    const res = await fetch(`data/patients/${patientNumber}.json`);
+    if (res.ok) {
+      chart = await res.json();
+    } else {
+      console.warn(
+        `No JSON chart found for patient ${patientNumber}, using CSV only.`
+      );
       chart = buildFallbackChartFromCsv(summaryRow);
     }
+  } catch (err) {
+    console.error("Error loading patient chart JSON", err);
+    chart = buildFallbackChartFromCsv(summaryRow);
   }
 
   if (!chart.assignedNurses) chart.assignedNurses = [];
@@ -368,23 +345,23 @@ function buildFallbackChartFromCsv(row) {
       weightKg: Number(row.weight),
       allergies: row.allergies,
       unit: "",
-      room: ""
+      room: "",
     },
     diagnoses: [],
     orders: [],
     vitalsLog: [],
     assessments: [],
     medications: { activeOrders: [], mar: [] },
-    assignedNurses: []
+    assignedNurses: [],
   };
 }
 
-/* ---------- ASSIGN / UNASSIGN LOGIC ---------- */
+/* ---------- ASSIGN / UNASSIGN (SESSION ONLY) ---------- */
 
 function toggleAssignment(patientNumber) {
   if (!currentUser) return;
 
-  const chart = patientCharts.get(patientNumber) || loadChartFromLocal(patientNumber);
+  const chart = patientCharts.get(patientNumber);
   if (!chart) return;
 
   if (!Array.isArray(chart.assignedNurses)) {
@@ -400,14 +377,13 @@ function toggleAssignment(patientNumber) {
     chart.assignedNurses.splice(idx, 1);
   }
 
-  saveChartToLocal(chart);
   patientCharts.set(patientNumber, chart);
 
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
 
-/* ---------- BRAIN: MY ASSIGNED PATIENTS ---------- */
+/* ---------- BRAIN: MY ASSIGNED PATIENTS (SESSION ONLY) ---------- */
 
 function refreshBrainAssignedList() {
   const container = document.getElementById("brain-assigned-list");
@@ -418,25 +394,14 @@ function refreshBrainAssignedList() {
     return;
   }
 
-  if (!patientsData || patientsData.length === 0) {
-    container.innerHTML = `<p class="muted">Loading patients...</p>`;
-    return;
-  }
-
   const assigned = [];
 
-  // IMPORTANT CHANGE:
-  // Look at ALL patients, pulling from localStorage if needed,
-  // so assignments persist across logins on this device.
-  for (const p of patientsData) {
-    const pn = p.patientNumber;
-    let chart = patientCharts.get(pn) || loadChartFromLocal(pn);
-    if (!chart) continue;
-
-    if (!Array.isArray(chart.assignedNurses)) continue;
-
-    if (chart.assignedNurses.includes(currentUser.username)) {
-      assigned.push({ chart, summary: p });
+  for (const chart of patientCharts.values()) {
+    if (
+      Array.isArray(chart.assignedNurses) &&
+      chart.assignedNurses.includes(currentUser.username)
+    ) {
+      assigned.push(chart);
     }
   }
 
@@ -446,11 +411,9 @@ function refreshBrainAssignedList() {
   }
 
   const rows = assigned
-    .map(({ chart, summary }) => {
+    .map((chart) => {
       const d = chart.demographics || {};
-      const name = `${(d.lastName || summary.lastName || "").toUpperCase()}, ${
-        d.firstName || summary.firstName || ""
-      }`;
+      const name = `${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}`;
       const unit = d.unit || "";
       const room = d.room || "";
       return `
@@ -573,7 +536,7 @@ function renderPatientDetail(chart) {
           ${
             isAdmin
               ? `<input id="edit-age" type="number" value="${d.age ?? ""}">`
-              : (d.age ?? "")
+              : d.age ?? ""
           }
         </div>
       </div>
@@ -584,7 +547,9 @@ function renderPatientDetail(chart) {
           ${
             isAdmin
               ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
-              : (d.weightKg != null ? d.weightKg + " kg" : "")
+              : d.weightKg != null
+              ? d.weightKg + " kg"
+              : ""
           }
         </div>
       </div>
@@ -701,7 +666,7 @@ function renderPatientDetail(chart) {
           description: newPrimaryDx,
           type: "Medical",
           status: "Active",
-          onset: ""
+          onset: "",
         });
       } else if (chart.diagnoses.length > 0) {
         chart.diagnoses[0].description = newPrimaryDx;
@@ -711,7 +676,6 @@ function renderPatientDetail(chart) {
     if (saveBtn) {
       saveBtn.addEventListener("click", () => {
         applyAdminEdits();
-        saveChartToLocal(chart);
         patientCharts.set(chart.patientNumber, chart);
         renderPatientDetail(chart);
         refreshBrainAssignedList();
@@ -721,7 +685,6 @@ function renderPatientDetail(chart) {
     if (exportBtn) {
       exportBtn.addEventListener("click", () => {
         applyAdminEdits();
-        saveChartToLocal(chart);
         patientCharts.set(chart.patientNumber, chart);
         exportChartAsJson(chart);
       });

@@ -50,6 +50,7 @@
 
     <!-- MAIN APP -->
     <section id="main-app" class="screen">
+      <!-- PRIMARY NAV (ROW 1) -->
       <header class="top-nav">
         <div class="nav-left">
           <button class="nav-tab active" data-view="brain">Brain</button>
@@ -62,22 +63,59 @@
         </div>
       </header>
 
+      <!-- SECONDARY NAV (ROW 2) – PATIENT TABS -->
+      <div class="secondary-nav">
+        <div id="patient-tab-bar" class="tab-bar">
+          <!-- Patient tabs get injected here -->
+        </div>
+      </div>
+
+      <!-- MAIN CONTENT -->
       <main class="main-content">
+        <!-- Brain / Dashboard -->
         <div id="view-brain" class="view active">
           <h2>Brain</h2>
           <p>
-            This will eventually be your overview/dashboard (tasks, reminders, active patients, etc.).
+            This will eventually be your overview dashboard (tasks, reminders, active patients, etc.).
           </p>
         </div>
 
+        <!-- Patient List -->
         <div id="view-patient-list" class="view">
           <h2>Patient List</h2>
-          <p>Patient list UI will go here.</p>
+          <div class="table-wrapper">
+            <table class="patient-table">
+              <thead>
+                <tr>
+                  <th>Patient #</th>
+                  <th>Last Name</th>
+                  <th>First Name</th>
+                  <th>Gender</th>
+                  <th>DOB</th>
+                  <th>Age</th>
+                  <th>Weight (kg)</th>
+                  <th>Allergies</th>
+                </tr>
+              </thead>
+              <tbody id="patient-table-body">
+                <!-- Filled from patients.csv -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        <!-- Drug Manual -->
         <div id="view-drug-manual" class="view">
           <h2>Drug Manual</h2>
           <p>Drug reference content will go here.</p>
+        </div>
+
+        <!-- Patient Detail View -->
+        <div id="view-patient-detail" class="view">
+          <h2>Patient Chart</h2>
+          <div id="patient-detail-content" class="patient-detail">
+            <!-- Filled when a patient tab is active -->
+          </div>
         </div>
       </main>
     </section>

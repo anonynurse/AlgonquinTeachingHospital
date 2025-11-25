@@ -434,3 +434,36 @@ button {
     flex-wrap: wrap;
   }
 }
+/* Brain tab layout */
+.brain-section h3 {
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Patient banner layout for Assign button */
+.patient-banner-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.btn-assign {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.8rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* On wider screens, keep name/meta and button side-by-side nicely */
+@media (min-width: 700px) {
+  .patient-banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

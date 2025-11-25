@@ -6,6 +6,56 @@ const openPatientTabs = new Map();         // patientNumber -> tab element
 const patientCharts = new Map();           // patientNumber -> full chart JSON (with runtime fields)
 let currentUser = null;                    // { username, role, ... }
 
+const PATIENT_STORAGE_PREFIX = "adh_patient_chart_";
+
+/* ---------- LOCAL PERSISTENCE HELPERS ---------- */
+
+function loadChartFromLocal(patientNumber) {
+  const key = PATIENT_STORAGE_PREFIX + patientNumber;
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveChartToLocal(chart) {
+  if (!chart || !chart.patientNumber) return;
+  const key = PATIENT_STORAGE_PREFIX + chart.patientNumber;
+  localStorage.setItem(key, JSON.stringify(chart));
+}
+
+/* ---------- EXPORT HELPER ---------- */
+
+function exportChartAsJson(chart) {
+  if (!chart) return;
+  const filename = `${chart.patientNumber || "patient"}.json`;
+  const blob = new Blob([JSON.stringify(chart, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- BASIC UTIL ---------- */
+
+function escapeHtml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   Auth.init();
   setupLogin();
@@ -157,7 +207,7 @@ function parsePatientsCsv(text) {
         dob: cols[4],
         age: cols[5],
         weight: cols[6],
-        allergies: cols[7] ?? ""
+        allergies: cols[7] ?? "",
       };
     });
 }
@@ -195,9 +245,7 @@ function renderPatientList() {
 /* ---------- PATIENT TABS (SECOND ROW) ---------- */
 
 function openPatientTab(patientNumber) {
-  const patient = patientsData.find(
-    (p) => p.patientNumber === patientNumber
-  );
+  const patient = patientsData.find((p) => p.patientNumber === patientNumber);
   if (!patient) return;
 
   const tabBar = document.getElementById("patient-tab-bar");
@@ -256,11 +304,9 @@ function closePatientTab(patientNumber) {
   if (isActive) {
     const remaining = Array.from(openPatientTabs.keys());
     if (remaining.length > 0) {
-      // Activate the last remaining tab
       const lastId = remaining[remaining.length - 1];
       activatePatientTab(lastId);
     } else {
-      // No patient tabs left: go back to patient list
       setActiveTab("patient-list");
       setActiveView("patient-list");
     }
@@ -270,12 +316,12 @@ function closePatientTab(patientNumber) {
 /* ---------- LOAD & RENDER PATIENT CHART ---------- */
 
 async function loadAndRenderPatientChart(patientNumber) {
-  const summaryRow = patientsData.find(
-    (p) => p.patientNumber === patientNumber
-  );
+  const summaryRow = patientsData.find((p) => p.patientNumber === patientNumber);
 
-  let chart = patientCharts.get(patientNumber);
+  // 1) Try local overridden chart first
+  let chart = loadChartFromLocal(patientNumber);
 
+  // 2) If no local version, fetch from JSON file
   if (!chart) {
     try {
       const res = await fetch(`data/patients/${patientNumber}.json`);
@@ -291,14 +337,13 @@ async function loadAndRenderPatientChart(patientNumber) {
       console.error("Error loading patient chart JSON", err);
       chart = buildFallbackChartFromCsv(summaryRow);
     }
-
-    // Ensure assignedNurses exists for runtime tracking
-    if (!Array.isArray(chart.assignedNurses)) {
-      chart.assignedNurses = [];
-    }
-
-    patientCharts.set(patientNumber, chart);
   }
+
+  // Ensure runtime fields
+  if (!chart.assignedNurses) chart.assignedNurses = [];
+  if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
+
+  patientCharts.set(patientNumber, chart);
 
   renderPatientDetail(chart);
   setActiveView("patient-detail");
@@ -318,14 +363,14 @@ function buildFallbackChartFromCsv(row) {
       weightKg: Number(row.weight),
       allergies: row.allergies,
       unit: "",
-      room: ""
+      room: "",
     },
     diagnoses: [],
     orders: [],
     vitalsLog: [],
     assessments: [],
     medications: { activeOrders: [], mar: [] },
-    assignedNurses: []
+    assignedNurses: [],
   };
 }
 
@@ -350,7 +395,7 @@ function toggleAssignment(patientNumber) {
     chart.assignedNurses.splice(idx, 1);
   }
 
-  // Re-render detail to update button label
+  saveChartToLocal(chart);
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
@@ -417,7 +462,6 @@ function refreshBrainAssignedList() {
     </div>
   `;
 
-  // Clicking a row in the Brain list opens & activates that patient tab
   container.querySelectorAll("tbody tr").forEach((tr) => {
     const pn = tr.dataset.patientNumber;
     tr.addEventListener("click", () => {
@@ -428,7 +472,7 @@ function refreshBrainAssignedList() {
   });
 }
 
-/* ---------- PATIENT DETAIL RENDERING ---------- */
+/* ---------- PATIENT DETAIL RENDERING (WITH ADMIN EDIT + EXPORT) ---------- */
 
 function renderPatientDetail(chart) {
   if (!chart) return;
@@ -445,52 +489,130 @@ function renderPatientDetail(chart) {
     Array.isArray(chart.assignedNurses) &&
     chart.assignedNurses.includes(currentUser.username);
 
+  const isAdmin = currentUser && currentUser.role === "admin";
+
   container.innerHTML = `
     <section class="patient-banner">
       <div class="patient-banner-main">
-        <div class="patient-name">${(d.lastName || "").toUpperCase()}, ${
-    d.firstName || ""
-  }</div>
+        <div class="patient-name">${escapeHtml(d.lastName || "").toUpperCase()}, ${escapeHtml(d.firstName || "")}</div>
         <div class="patient-meta">
           <span>Patient # ${chart.patientNumber || ""}</span>
-          ${d.gender ? `<span>Gender: ${d.gender}</span>` : ""}
-          ${d.unit ? `<span>Unit: ${d.unit}</span>` : ""}
-          ${d.room ? `<span>Room: ${d.room}</span>` : ""}
+          ${d.gender ? `<span>Gender: ${escapeHtml(d.gender)}</span>` : ""}
+          ${d.unit ? `<span>Unit: ${escapeHtml(d.unit)}</span>` : ""}
+          ${d.room ? `<span>Room: ${escapeHtml(d.room)}</span>` : ""}
         </div>
       </div>
-      <button id="assign-btn" class="btn-secondary btn-assign">
-        ${isAssigned ? "Unassign Me" : "Assign Me"}
-      </button>
+      ${
+        currentUser
+          ? `<button id="assign-btn" class="btn-secondary btn-assign">
+               ${isAssigned ? "Unassign Me" : "Assign Me"}
+             </button>`
+          : ""
+      }
     </section>
 
     <section class="patient-info-grid">
       <div class="info-item">
+        <div class="info-label">First Name</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-first-name" value="${escapeHtml(d.firstName || "")}">`
+              : escapeHtml(d.firstName || "")
+          }
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">Last Name</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-last-name" value="${escapeHtml(d.lastName || "")}">`
+              : escapeHtml(d.lastName || "")
+          }
+        </div>
+      </div>
+
+      <div class="info-item">
         <div class="info-label">Date of Birth</div>
-        <div class="info-value">${d.dateOfBirth || ""}</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-dob" value="${escapeHtml(d.dateOfBirth || "")}">`
+              : escapeHtml(d.dateOfBirth || "")
+          }
+        </div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Age</div>
-        <div class="info-value">${d.age ?? ""}</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-age" type="number" value="${d.age ?? ""}">`
+              : d.age ?? ""
+          }
+        </div>
       </div>
 
       <div class="info-item">
-        <div class="info-label">Weight</div>
-        <div class="info-value">${
-          d.weightKg != null ? d.weightKg + " kg" : ""
-        }</div>
+        <div class="info-label">Weight (kg)</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-weight" type="number" step="0.1" value="${d.weightKg ?? ""}">`
+              : d.weightKg != null
+              ? d.weightKg + " kg"
+              : ""
+          }
+        </div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Allergies</div>
-        <div class="info-value">${
-          d.allergies || "No Known Allergies"
-        }</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-allergies" value="${escapeHtml(
+                  d.allergies || "No Known Allergies"
+                )}">`
+              : escapeHtml(d.allergies || "No Known Allergies")
+          }
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">Unit</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-unit" value="${escapeHtml(d.unit || "")}">`
+              : escapeHtml(d.unit || "")
+          }
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">Room</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-room" value="${escapeHtml(d.room || "")}">`
+              : escapeHtml(d.room || "")
+          }
+        </div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Primary Diagnosis</div>
-        <div class="info-value">${primaryDx}</div>
+        <div class="info-value">
+          ${
+            isAdmin
+              ? `<input id="edit-primary-dx" value="${escapeHtml(primaryDx || "")}">`
+              : escapeHtml(primaryDx)
+          }
+        </div>
       </div>
 
       <div class="info-item">
@@ -500,18 +622,89 @@ function renderPatientDetail(chart) {
 
       <div class="info-item">
         <div class="info-label">MAR Entries</div>
-        <div class="info-value">${
-          (chart.medications?.mar || []).length
-        }</div>
+        <div class="info-value">${(chart.medications?.mar || []).length}</div>
       </div>
     </section>
+
+    ${
+      isAdmin
+        ? `<div class="info-item" style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+             <button id="save-patient-btn" class="btn-primary" style="width:auto;padding-inline:1.25rem;">
+               Save Changes
+             </button>
+             <button id="export-patient-btn" class="btn-secondary" style="width:auto;padding-inline:1.25rem;">
+               Export JSON
+             </button>
+           </div>`
+        : ""
+    }
   `;
 
-  // Hook up Assign/Unassign button
+  // Assign/Unassign button
   const assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", () => {
       toggleAssignment(chart.patientNumber);
     });
+  }
+
+  const isAdmin = currentUser && currentUser.role === "admin";
+  if (isAdmin) {
+    const saveBtn = document.getElementById("save-patient-btn");
+    const exportBtn = document.getElementById("export-patient-btn");
+
+    // helper to pull current form values into chart object
+    const applyAdminEdits = () => {
+      const d2 = chart.demographics || {};
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : "";
+      };
+
+      d2.firstName = getVal("edit-first-name");
+      d2.lastName = getVal("edit-last-name");
+      d2.dateOfBirth = getVal("edit-dob");
+      const ageVal = getVal("edit-age");
+      d2.age = ageVal ? Number(ageVal) : null;
+      const weightVal = getVal("edit-weight");
+      d2.weightKg = weightVal ? Number(weightVal) : null;
+      d2.allergies = getVal("edit-allergies") || "No Known Allergies";
+      d2.unit = getVal("edit-unit");
+      d2.room = getVal("edit-room");
+      chart.demographics = d2;
+
+      const newPrimaryDx = getVal("edit-primary-dx");
+      if (!chart.diagnoses) chart.diagnoses = [];
+      if (chart.diagnoses.length === 0 && newPrimaryDx) {
+        chart.diagnoses.push({
+          code: "",
+          description: newPrimaryDx,
+          type: "Medical",
+          status: "Active",
+          onset: "",
+        });
+      } else if (chart.diagnoses.length > 0) {
+        chart.diagnoses[0].description = newPrimaryDx;
+      }
+    };
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        applyAdminEdits();
+        saveChartToLocal(chart);
+        patientCharts.set(chart.patientNumber, chart);
+        renderPatientDetail(chart);
+        refreshBrainAssignedList();
+      });
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => {
+        applyAdminEdits();
+        saveChartToLocal(chart);
+        patientCharts.set(chart.patientNumber, chart);
+        exportChartAsJson(chart);
+      });
+    }
   }
 }

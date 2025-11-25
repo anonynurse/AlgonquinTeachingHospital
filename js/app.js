@@ -1,8 +1,11 @@
-// js/app.js  — minimal stable version
+// Algonquin Digital Hospital - core client logic
+// Plain ES5-style JavaScript, no modules/imports.
 
-/************ SIMPLE AUTH ************/
+/* =========================
+   SIMPLE AUTH CONFIG
+   ========================= */
 
-const USERS = {
+var USERS = {
   admin: { password: "password", role: "admin" },
   sn001: { password: "password", role: "student" },
   sn002: { password: "password", role: "student" },
@@ -10,22 +13,32 @@ const USERS = {
   sn004: { password: "password", role: "student" }
 };
 
-let currentUser = null;              // { username, role }
+var currentUser = null; // { username, role }
 
-/************ APP STATE ************/
+/* =========================
+   APP STATE
+   ========================= */
 
-let patientsData = [];               // from patients.csv
-const patientCharts = new Map();     // patientNumber -> basic chart
-const openPatientTabs = new Map();   // patientNumber -> tab element
+// Patient roster from CSV
+var patientsData = []; // array of simple patient rows
 
-let drugsList = [];                  // from data/drugs/drugs.json
-const drugDetails = new Map();       // id -> drug JSON
-const openDrugTabs = new Map();      // id -> tab element
+// Patient charts in memory: patientNumber -> chart object
+var patientCharts = {}; // { "123456": { ...chart... } }
 
-/************ UTIL ************/
+// Open patient tabs (second row): array of { patientNumber, element }
+var openPatientTabs = [];
+
+// Drug library
+var drugsList = [];      // from data/drugs/drugs.json
+var drugDetails = {};    // id -> full JSON
+var openDrugTabs = [];   // array of { id, element }
+
+/* =========================
+   UTILITIES
+   ========================= */
 
 function escapeHtml(str) {
-  if (str == null) return "";
+  if (str === null || str === undefined) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -34,16 +47,25 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-/************ ENTRY ************/
+/* =========================
+   ENTRY POINT
+   ========================= */
 
 document.addEventListener("DOMContentLoaded", function () {
-  setupLogin();
-  setupNav();
-  loadPatients();
-  loadDrugs();
+  try {
+    setupLogin();
+    setupNav();
+    loadPatients();
+    loadDrugs();
+    showLoginScreen();
+  } catch (e) {
+    console.error("Initialization error:", e);
+  }
 });
 
-/************ LOGIN + NAV ************/
+/* =========================
+   LOGIN + NAV
+   ========================= */
 
 function setupLogin() {
   var form = document.getElementById("login-form");
@@ -55,7 +77,6 @@ function setupLogin() {
     e.preventDefault();
     if (errorEl) errorEl.textContent = "";
 
-    // Try to get username/password robustly
     var usernameInput =
       form.querySelector("input[name='username']") ||
       document.getElementById("username");
@@ -66,7 +87,7 @@ function setupLogin() {
     var username = usernameInput ? usernameInput.value.trim() : "";
     var password = passwordInput ? passwordInput.value : "";
 
-    var user = tryLogin(username, password);
+    var user = authenticate(username, password);
     if (!user) {
       if (errorEl) errorEl.textContent = "Invalid username or password.";
       return;
@@ -78,7 +99,7 @@ function setupLogin() {
   });
 }
 
-function tryLogin(username, password) {
+function authenticate(username, password) {
   var rec = USERS[username];
   if (!rec) return null;
   if (rec.password !== password) return null;
@@ -91,25 +112,24 @@ function setupNav() {
     logoutBtn.addEventListener("click", function () {
       currentUser = null;
 
-      // Reset patient tabs
+      // Clear patient tabs and charts
       var ptTabBar = document.getElementById("patient-tab-bar");
       if (ptTabBar) ptTabBar.innerHTML = "";
-      openPatientTabs.clear();
-      patientCharts.clear();
+      openPatientTabs = [];
+      patientCharts = {};
 
-      // Reset drug tabs
+      // Clear drug tabs and detail panel
       var drugTabBar = document.getElementById("drug-tab-bar");
       if (drugTabBar) drugTabBar.innerHTML = "";
-      openDrugTabs.clear();
+      openDrugTabs = [];
       var drugDetail = document.getElementById("drug-detail-content");
       if (drugDetail) {
         drugDetail.innerHTML =
           '<p class="muted">Select a drug from the list on the left.</p>';
       }
 
-      // Back to login
-      showLoginScreen();
       refreshBrainAssignedList();
+      showLoginScreen();
     });
   }
 
@@ -117,13 +137,8 @@ function setupNav() {
   for (var i = 0; i < navTabs.length; i++) {
     (function (tab) {
       tab.addEventListener("click", function () {
-        // highlight tab
-        for (var j = 0; j < navTabs.length; j++) {
-          navTabs[j].classList.remove("active");
-        }
-        tab.classList.add("active");
-
         var viewName = tab.getAttribute("data-view");
+        setActiveTab(viewName);
         setActiveView(viewName);
       });
     })(navTabs[i]);
@@ -141,8 +156,10 @@ function showMainApp() {
     usernameDisplay.textContent = currentUser.username;
   }
 
-  setActiveView("brain");
+  // Default to Brain view
   setActiveTab("brain");
+  setActiveView("brain");
+
   refreshBrainAssignedList();
 }
 
@@ -174,9 +191,16 @@ function setActiveTab(viewName) {
   }
 }
 
-/************ PATIENT LIST ************/
+/* =========================
+   PATIENT LIST
+   ========================= */
 
 function loadPatients() {
+  if (!window.fetch) {
+    console.warn("fetch() not available; patients.csv will not load.");
+    return;
+  }
+
   fetch("data/patients.csv")
     .then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -187,22 +211,25 @@ function loadPatients() {
       renderPatientList();
     })
     .catch(function (err) {
-      console.error("Error loading patients.csv:", err);
+      console.warn("Error loading patients.csv:", err);
     });
 }
 
 function parsePatientsCsv(text) {
   var lines = text.trim().split(/\r?\n/);
   if (lines.length <= 1) return [];
-  var dataLines = lines.slice(1); // skip header
 
+  var header = lines[0]; // unused but kept
+  var dataLines = lines.slice(1);
   var out = [];
+
   for (var i = 0; i < dataLines.length; i++) {
     var line = dataLines[i].trim();
     if (!line) continue;
     var cols = line.split(",").map(function (c) {
       return c.trim().replace(/^"|"$/g, "");
     });
+
     out.push({
       patientNumber: cols[0],
       lastName: cols[1],
@@ -214,6 +241,7 @@ function parsePatientsCsv(text) {
       allergies: cols[7] || ""
     });
   }
+
   return out;
 }
 
@@ -227,6 +255,7 @@ function renderPatientList() {
     (function (p) {
       var tr = document.createElement("tr");
       tr.setAttribute("data-patient-number", p.patientNumber);
+
       tr.innerHTML =
         "<td>" + escapeHtml(p.patientNumber) + "</td>" +
         "<td>" + escapeHtml(p.lastName) + "</td>" +
@@ -246,33 +275,37 @@ function renderPatientList() {
   }
 }
 
-/************ PATIENT TABS ************/
+/* =========================
+   PATIENT TABS (SECOND ROW)
+   ========================= */
+
+function findPatientTabIndex(patientNumber) {
+  for (var i = 0; i < openPatientTabs.length; i++) {
+    if (openPatientTabs[i].patientNumber === patientNumber) return i;
+  }
+  return -1;
+}
 
 function openPatientTab(patientNumber) {
-  var patient = null;
-  for (var i = 0; i < patientsData.length; i++) {
-    if (patientsData[i].patientNumber === patientNumber) {
-      patient = patientsData[i];
-      break;
-    }
-  }
-  if (!patient) return;
+  var pt = findPatientRow(patientNumber);
+  if (!pt) return;
 
   var tabBar = document.getElementById("patient-tab-bar");
   if (!tabBar) return;
 
-  if (!openPatientTabs.has(patientNumber)) {
+  if (findPatientTabIndex(patientNumber) === -1) {
     var tabEl = document.createElement("button");
     tabEl.className = "patient-tab";
     tabEl.setAttribute("data-patient-number", patientNumber);
     tabEl.innerHTML =
       '<span class="patient-tab-label">' +
-      escapeHtml(patient.lastName) + ", " + escapeHtml(patient.firstName) +
+      escapeHtml(pt.lastName) + ", " + escapeHtml(pt.firstName) +
       '</span>' +
       '<span class="tab-close" aria-label="Close tab">&times;</span>';
 
     tabEl.addEventListener("click", function (e) {
-      if (e.target && e.target.classList.contains("tab-close")) {
+      var target = e.target || e.srcElement;
+      if (target && target.classList && target.classList.contains("tab-close")) {
         e.stopPropagation();
         closePatientTab(patientNumber);
       } else {
@@ -281,36 +314,44 @@ function openPatientTab(patientNumber) {
     });
 
     tabBar.appendChild(tabEl);
-    openPatientTabs.set(patientNumber, tabEl);
+    openPatientTabs.push({ patientNumber: patientNumber, element: tabEl });
   }
-  // Do not auto-switch; user must click tab to view
+  // Do NOT auto-activate; user clicks the tab body to activate.
 }
 
 function activatePatientTab(patientNumber) {
-  openPatientTabs.forEach(function (el, id) {
-    if (id === patientNumber) {
-      el.classList.add("active");
+  for (var i = 0; i < openPatientTabs.length; i++) {
+    var entry = openPatientTabs[i];
+    if (!entry || !entry.element) continue;
+    if (entry.patientNumber === patientNumber) {
+      entry.element.classList.add("active");
     } else {
-      el.classList.remove("active");
+      entry.element.classList.remove("active");
     }
-  });
+  }
 
   loadAndRenderPatientChart(patientNumber);
 }
 
 function closePatientTab(patientNumber) {
-  var tabEl = openPatientTabs.get(patientNumber);
-  if (!tabEl) return;
+  var idx = findPatientTabIndex(patientNumber);
+  if (idx === -1) return;
 
-  var isActive = tabEl.classList.contains("active");
-  tabEl.remove();
-  openPatientTabs.delete(patientNumber);
+  var tabEntry = openPatientTabs[idx];
+  var wasActive =
+    tabEntry.element &&
+    tabEntry.element.classList.contains("active");
 
-  if (isActive) {
-    var remaining = Array.from(openPatientTabs.keys());
-    if (remaining.length > 0) {
-      var lastId = remaining[remaining.length - 1];
-      activatePatientTab(lastId);
+  if (tabEntry.element && tabEntry.element.parentNode) {
+    tabEntry.element.parentNode.removeChild(tabEntry.element);
+  }
+
+  openPatientTabs.splice(idx, 1);
+
+  if (wasActive) {
+    if (openPatientTabs.length > 0) {
+      var last = openPatientTabs[openPatientTabs.length - 1];
+      activatePatientTab(last.patientNumber);
     } else {
       setActiveTab("patient-list");
       setActiveView("patient-list");
@@ -318,42 +359,116 @@ function closePatientTab(patientNumber) {
   }
 }
 
-/************ PATIENT CHART + BRAIN (SIMPLE) ************/
-
-function loadAndRenderPatientChart(patientNumber) {
-  var summaryRow = null;
+function findPatientRow(patientNumber) {
   for (var i = 0; i < patientsData.length; i++) {
     if (patientsData[i].patientNumber === patientNumber) {
-      summaryRow = patientsData[i];
-      break;
+      return patientsData[i];
     }
   }
-  if (!summaryRow) return;
+  return null;
+}
 
-  var chart = patientCharts.get(patientNumber);
-  if (!chart) {
-    chart = {
-      patientNumber: summaryRow.patientNumber,
-      demographics: {
-        firstName: summaryRow.firstName,
-        lastName: summaryRow.lastName,
-        gender: summaryRow.gender,
-        dateOfBirth: summaryRow.dob,
-        age: summaryRow.age,
-        weightKg: summaryRow.weight,
-        allergies: summaryRow.allergies || "No Known Allergies",
-        unit: "",
-        room: "",
-        precautions: "None documented"
-      },
-      assignedNurses: []
-    };
-    patientCharts.set(patientNumber, chart);
+/* =========================
+   PATIENT CHART
+   ========================= */
+
+function loadAndRenderPatientChart(patientNumber) {
+  var row = findPatientRow(patientNumber);
+  if (!row) {
+    console.warn("No CSV row for patient", patientNumber);
+    return;
   }
 
-  renderPatientDetail(chart);
-  setActiveView("patient-detail");
-  refreshBrainAssignedList();
+  // If we already have a chart loaded in memory, just use it.
+  if (patientCharts[patientNumber]) {
+    renderPatientDetail(patientCharts[patientNumber]);
+    setActiveView("patient-detail");
+    refreshBrainAssignedList();
+    return;
+  }
+
+  if (!window.fetch) {
+    // No fetch; just build from CSV
+    var chartFallback = buildChartFromRow(row);
+    patientCharts[patientNumber] = chartFallback;
+    renderPatientDetail(chartFallback);
+    setActiveView("patient-detail");
+    refreshBrainAssignedList();
+    return;
+  }
+
+  // Try to load JSON; if that fails, fallback to CSV
+  fetch("data/patients/" + patientNumber + ".json")
+    .then(function (res) {
+      if (!res.ok) throw new Error("No JSON for this patient");
+      return res.json();
+    })
+    .then(function (json) {
+      var chart = normalizeChartJson(json, row);
+      patientCharts[patientNumber] = chart;
+      renderPatientDetail(chart);
+      setActiveView("patient-detail");
+      refreshBrainAssignedList();
+    })
+    .catch(function () {
+      var chart = buildChartFromRow(row);
+      patientCharts[patientNumber] = chart;
+      renderPatientDetail(chart);
+      setActiveView("patient-detail");
+      refreshBrainAssignedList();
+    });
+}
+
+function buildChartFromRow(row) {
+  return {
+    patientNumber: row.patientNumber,
+    demographics: {
+      firstName: row.firstName,
+      lastName: row.lastName,
+      gender: row.gender,
+      dateOfBirth: row.dob,
+      age: row.age,
+      weightKg: row.weight,
+      allergies: row.allergies || "No Known Allergies",
+      unit: "",
+      room: "",
+      precautions: "None documented"
+    },
+    diagnoses: [],
+    orders: [],
+    vitalsLog: [],
+    assessments: [],
+    medications: { activeOrders: [], mar: [] },
+    assignedNurses: []
+  };
+}
+
+function normalizeChartJson(json, row) {
+  var chart = json || {};
+  chart.patientNumber = chart.patientNumber || (row && row.patientNumber) || "";
+
+  if (!chart.demographics) chart.demographics = {};
+  var d = chart.demographics;
+
+  d.firstName = d.firstName || (row && row.firstName) || "";
+  d.lastName = d.lastName || (row && row.lastName) || "";
+  d.gender = d.gender || (row && row.gender) || "";
+  d.dateOfBirth = d.dateOfBirth || (row && row.dob) || "";
+  d.age = d.age || (row && row.age) || "";
+  d.weightKg = d.weightKg || (row && row.weight) || "";
+  d.allergies = d.allergies || (row && row.allergies) || "No Known Allergies";
+  d.unit = d.unit || "";
+  d.room = d.room || "";
+  d.precautions = d.precautions || "None documented";
+
+  if (!chart.diagnoses) chart.diagnoses = [];
+  if (!chart.orders) chart.orders = [];
+  if (!chart.vitalsLog) chart.vitalsLog = [];
+  if (!chart.assessments) chart.assessments = [];
+  if (!chart.medications) chart.medications = { activeOrders: [], mar: [] };
+  if (!chart.assignedNurses) chart.assignedNurses = [];
+
+  return chart;
 }
 
 function renderPatientDetail(chart) {
@@ -361,10 +476,18 @@ function renderPatientDetail(chart) {
   if (!container) return;
 
   var d = chart.demographics || {};
-  var isAssigned =
-    currentUser &&
-    chart.assignedNurses &&
-    chart.assignedNurses.indexOf(currentUser.username) !== -1;
+  var diagnoses = chart.diagnoses || [];
+  var primaryDx = diagnoses.length ? (diagnoses[0].description || "N/A") : "N/A";
+
+  var isAssigned = false;
+  if (currentUser && chart.assignedNurses) {
+    for (var i = 0; i < chart.assignedNurses.length; i++) {
+      if (chart.assignedNurses[i] === currentUser.username) {
+        isAssigned = true;
+        break;
+      }
+    }
+  }
 
   var html = "";
 
@@ -376,7 +499,7 @@ function renderPatientDetail(chart) {
     escapeHtml(d.firstName || "") + "</div>";
   html += '    <div class="patient-banner-row">';
   html += '      <span>Patient # ' + escapeHtml(chart.patientNumber || "") + "</span>";
-  if (d.age != null && d.age !== "") {
+  if (d.age !== null && d.age !== undefined && d.age !== "") {
     html += '      <span>Age: ' + escapeHtml(d.age) + "</span>";
   }
   if (d.gender) {
@@ -410,7 +533,7 @@ function renderPatientDetail(chart) {
   }
   html += "</section>";
 
-  // Simple placeholder for chart tabs
+  // Internal chart tabs
   html += '<div class="chart-subnav">';
   html += '  <button class="chart-tab active" data-chart-view="summary">Summary</button>';
   html += '  <button class="chart-tab" data-chart-view="orders">Orders</button>';
@@ -419,22 +542,44 @@ function renderPatientDetail(chart) {
   html += "</div>";
 
   html += '<div id="patient-chart-views">';
+
+  // Summary
   html += '  <div id="chart-summary" class="chart-view active">';
-  html += '    <p class="muted">Summary view placeholder.</p>';
+  html += '    <section class="patient-info-grid">';
+  html += infoRow("First Name", d.firstName);
+  html += infoRow("Last Name", d.lastName);
+  html += infoRow("Date of Birth", d.dateOfBirth);
+  html += infoRow("Age", d.age);
+  html += infoRow("Weight (kg)", d.weightKg);
+  html += infoRow("Gender", d.gender);
+  html += infoRow("Allergies", d.allergies || "No Known Allergies");
+  html += infoRow("Precautions", d.precautions || "None documented");
+  html += infoRow("Unit", d.unit);
+  html += infoRow("Room", d.room);
+  html += infoRow("Primary Diagnosis", primaryDx);
+  html += "    </section>";
   html += "  </div>";
+
+  // Orders
   html += '  <div id="chart-orders" class="chart-view">';
   html += '    <p class="muted">Orders view coming later.</p>';
   html += "  </div>";
+
+  // Flowsheet
   html += '  <div id="chart-flowsheet" class="chart-view">';
   html += '    <p class="muted">Flowsheet view coming later.</p>';
   html += "  </div>";
+
+  // MAR
   html += '  <div id="chart-mar" class="chart-view">';
   html += '    <p class="muted">MAR view coming later.</p>';
   html += "  </div>";
+
   html += "</div>";
 
   container.innerHTML = html;
 
+  // Assign/Unassign button
   var assignBtn = document.getElementById("assign-btn");
   if (assignBtn && currentUser) {
     assignBtn.addEventListener("click", function () {
@@ -442,40 +587,64 @@ function renderPatientDetail(chart) {
     });
   }
 
-  // internal chart tab switching
+  // Internal chart tabs
   var chartTabs = container.querySelectorAll(".chart-tab");
   var chartViews = container.querySelectorAll(".chart-view");
   for (var i = 0; i < chartTabs.length; i++) {
     (function (btn) {
       btn.addEventListener("click", function () {
         var view = btn.getAttribute("data-chart-view");
+
         for (var j = 0; j < chartTabs.length; j++) {
           chartTabs[j].classList.remove("active");
         }
         btn.classList.add("active");
+
         for (var k = 0; k < chartViews.length; k++) {
           chartViews[k].classList.remove("active");
         }
-        var target = container.querySelector("#chart-" + view);
-        if (target) target.classList.add("active");
+        var vEl = container.querySelector("#chart-" + view);
+        if (vEl) vEl.classList.add("active");
       });
     })(chartTabs[i]);
   }
 }
 
+function infoRow(label, value) {
+  return (
+    '<div class="info-item">' +
+    '<div class="info-label">' + escapeHtml(label) + "</div>" +
+    '<div class="info-value">' + escapeHtml(value || "—") + "</div>" +
+    "</div>"
+  );
+}
+
+/* =========================
+   ASSIGN / BRAIN
+   ========================= */
+
 function toggleAssignment(patientNumber) {
   if (!currentUser) return;
-  var chart = patientCharts.get(patientNumber);
+  var chart = patientCharts[patientNumber];
   if (!chart) return;
-
   if (!chart.assignedNurses) chart.assignedNurses = [];
-  var idx = chart.assignedNurses.indexOf(currentUser.username);
+
+  var uname = currentUser.username;
+  var idx = -1;
+  for (var i = 0; i < chart.assignedNurses.length; i++) {
+    if (chart.assignedNurses[i] === uname) {
+      idx = i;
+      break;
+    }
+  }
+
   if (idx === -1) {
-    chart.assignedNurses.push(currentUser.username);
+    chart.assignedNurses.push(uname);
   } else {
     chart.assignedNurses.splice(idx, 1);
   }
-  patientCharts.set(patientNumber, chart);
+
+  patientCharts[patientNumber] = chart;
   renderPatientDetail(chart);
   refreshBrainAssignedList();
 }
@@ -490,24 +659,36 @@ function refreshBrainAssignedList() {
   }
 
   var rows = "";
-  patientCharts.forEach(function (chart) {
-    if (
-      chart.assignedNurses &&
-      chart.assignedNurses.indexOf(currentUser.username) !== -1
-    ) {
-      var d = chart.demographics || {};
-      var name =
-        escapeHtml((d.lastName || "").toUpperCase()) +
-        ", " + escapeHtml(d.firstName || "");
-      rows +=
-        '<tr data-patient-number="' + escapeHtml(chart.patientNumber) + '">' +
-        "<td>" + escapeHtml(chart.patientNumber) + "</td>" +
-        "<td>" + name + "</td>" +
-        "<td>" + escapeHtml(d.unit || "") + "</td>" +
-        "<td>" + escapeHtml(d.room || "") + "</td>" +
-        "</tr>";
+
+  for (var pn in patientCharts) {
+    if (!patientCharts.hasOwnProperty(pn)) continue;
+    var chart = patientCharts[pn];
+    if (!chart.assignedNurses) continue;
+
+    var assigned = false;
+    for (var i = 0; i < chart.assignedNurses.length; i++) {
+      if (chart.assignedNurses[i] === currentUser.username) {
+        assigned = true;
+        break;
+      }
     }
-  });
+    if (!assigned) continue;
+
+    var d = chart.demographics || {};
+    var name =
+      escapeHtml((d.lastName || "").toUpperCase()) +
+      ", " + escapeHtml(d.firstName || "");
+    var unit = escapeHtml(d.unit || "");
+    var room = escapeHtml(d.room || "");
+
+    rows +=
+      '<tr data-patient-number="' + escapeHtml(pn) + '">' +
+      "<td>" + escapeHtml(pn) + "</td>" +
+      "<td>" + name + "</td>" +
+      "<td>" + unit + "</td>" +
+      "<td>" + room + "</td>" +
+      "</tr>";
+  }
 
   if (!rows) {
     container.innerHTML =
@@ -515,27 +696,27 @@ function refreshBrainAssignedList() {
     return;
   }
 
-  var html = "";
-  html += '<div class="table-wrapper">';
-  html += '  <table class="patient-table">';
-  html += "    <thead>";
-  html += "      <tr>";
-  html += "        <th>Patient #</th>";
-  html += "        <th>Name</th>";
-  html += "        <th>Unit</th>";
-  html += "        <th>Room</th>";
-  html += "      </tr>";
-  html += "    </thead>";
-  html += "    <tbody>";
-  html += rows;
-  html += "    </tbody>";
-  html += "  </table>";
-  html += "</div>";
+  var html =
+    '<div class="table-wrapper">' +
+    '<table class="patient-table">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>Patient #</th>" +
+    "<th>Name</th>" +
+    "<th>Unit</th>" +
+    "<th>Room</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>" +
+    rows +
+    "</tbody>" +
+    "</table>" +
+    "</div>";
 
   container.innerHTML = html;
 
   var trs = container.querySelectorAll("tbody tr");
-  for (var i = 0; i < trs.length; i++) {
+  for (var j = 0; j < trs.length; j++) {
     (function (tr) {
       var pn = tr.getAttribute("data-patient-number");
       tr.addEventListener("click", function () {
@@ -543,29 +724,40 @@ function refreshBrainAssignedList() {
         openPatientTab(pn);
         activatePatientTab(pn);
       });
-    })(trs[i]);
+    })(trs[j]);
   }
 }
 
-/************ DRUG MANUAL (SIMPLE) ************/
+/* =========================
+   DRUG MANUAL
+   ========================= */
 
 function loadDrugs() {
+  if (!window.fetch) {
+    console.warn("fetch() not available; drugs.json will not load.");
+    return;
+  }
+
   fetch("data/drugs/drugs.json")
     .then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     })
     .then(function (data) {
-      if (!Array.isArray(data)) data = [];
-      data.sort(function (a, b) {
-        return (a.name || "").localeCompare(b.name || "");
-      });
-      drugsList = data;
+      if (!data || !data.length) {
+        drugsList = [];
+      } else {
+        data.sort(function (a, b) {
+          return (a.name || "").localeCompare(b.name || "");
+        });
+        drugsList = data;
+      }
       renderDrugList();
     })
     .catch(function (err) {
-      // If file doesn't exist, just log and don't break anything
       console.warn("Error loading drugs.json:", err);
+      drugsList = [];
+      renderDrugList();
     });
 }
 
@@ -601,6 +793,13 @@ function renderDrugList() {
   }
 }
 
+function findDrugTabIndex(id) {
+  for (var i = 0; i < openDrugTabs.length; i++) {
+    if (openDrugTabs[i].id === id) return i;
+  }
+  return -1;
+}
+
 function openDrugTab(drugId) {
   var drug = null;
   for (var i = 0; i < drugsList.length; i++) {
@@ -614,7 +813,7 @@ function openDrugTab(drugId) {
   var tabBar = document.getElementById("drug-tab-bar");
   if (!tabBar) return;
 
-  if (!openDrugTabs.has(drugId)) {
+  if (findDrugTabIndex(drugId) === -1) {
     var tabEl = document.createElement("button");
     tabEl.className = "drug-tab";
     tabEl.setAttribute("data-drug-id", drugId);
@@ -623,7 +822,8 @@ function openDrugTab(drugId) {
       '<span class="drug-tab-close" aria-label="Close tab">&times;</span>';
 
     tabEl.addEventListener("click", function (e) {
-      if (e.target && e.target.classList.contains("drug-tab-close")) {
+      var target = e.target || e.srcElement;
+      if (target && target.classList && target.classList.contains("drug-tab-close")) {
         e.stopPropagation();
         closeDrugTab(drugId);
       } else {
@@ -632,37 +832,45 @@ function openDrugTab(drugId) {
     });
 
     tabBar.appendChild(tabEl);
-    openDrugTabs.set(drugId, tabEl);
+    openDrugTabs.push({ id: drugId, element: tabEl });
   }
 }
 
 function activateDrugTab(drugId) {
-  openDrugTabs.forEach(function (el, id) {
-    if (id === drugId) {
-      el.classList.add("active");
+  for (var i = 0; i < openDrugTabs.length; i++) {
+    var entry = openDrugTabs[i];
+    if (!entry || !entry.element) continue;
+    if (entry.id === drugId) {
+      entry.element.classList.add("active");
     } else {
-      el.classList.remove("active");
+      entry.element.classList.remove("active");
     }
-  });
+  }
   loadAndRenderDrug(drugId);
 }
 
 function closeDrugTab(drugId) {
-  var tabEl = openDrugTabs.get(drugId);
-  if (!tabEl) return;
+  var idx = findDrugTabIndex(drugId);
+  if (idx === -1) return;
 
-  var isActive = tabEl.classList.contains("active");
-  tabEl.remove();
-  openDrugTabs.delete(drugId);
+  var entry = openDrugTabs[idx];
+  var wasActive =
+    entry.element &&
+    entry.element.classList.contains("active");
+
+  if (entry.element && entry.element.parentNode) {
+    entry.element.parentNode.removeChild(entry.element);
+  }
+
+  openDrugTabs.splice(idx, 1);
 
   var detail = document.getElementById("drug-detail-content");
   if (!detail) return;
 
-  if (isActive) {
-    var remaining = Array.from(openDrugTabs.keys());
-    if (remaining.length > 0) {
-      var last = remaining[remaining.length - 1];
-      activateDrugTab(last);
+  if (wasActive) {
+    if (openDrugTabs.length > 0) {
+      var last = openDrugTabs[openDrugTabs.length - 1];
+      activateDrugTab(last.id);
     } else {
       detail.innerHTML =
         '<p class="muted">Select a drug from the list on the left.</p>';
@@ -671,9 +879,14 @@ function closeDrugTab(drugId) {
 }
 
 function loadAndRenderDrug(drugId) {
-  var cached = drugDetails.get(drugId);
+  var cached = drugDetails[drugId];
   if (cached) {
     renderDrugDetail(cached);
+    return;
+  }
+
+  if (!window.fetch) {
+    console.warn("fetch() not available; cannot load drug details.");
     return;
   }
 
@@ -683,7 +896,7 @@ function loadAndRenderDrug(drugId) {
       return res.json();
     })
     .then(function (json) {
-      drugDetails.set(drugId, json);
+      drugDetails[drugId] = json;
       renderDrugDetail(json);
     })
     .catch(function (err) {
@@ -757,22 +970,28 @@ function renderDrugDetail(drug) {
   html += "    <h4>Compatibility</h4>";
   html += "    <ul>";
   if (compatibility.iv) {
-    html += "      <li><strong>IV:</strong> " + escapeHtml(compatibility.iv) + "</li>";
+    html +=
+      "      <li><strong>IV:</strong> " + escapeHtml(compatibility.iv) + "</li>";
   }
   if (compatibility.oral) {
-    html += "      <li><strong>Oral:</strong> " + escapeHtml(compatibility.oral) + "</li>";
+    html +=
+      "      <li><strong>Oral:</strong> " + escapeHtml(compatibility.oral) + "</li>";
   }
   if (compatibility.other) {
-    html += "      <li><strong>Other:</strong> " + escapeHtml(compatibility.other) + "</li>";
+    html +=
+      "      <li><strong>Other:</strong> " + escapeHtml(compatibility.other) + "</li>";
   }
   html += "    </ul>";
   html += "  </section>";
 
   html += '  <section class="drug-section">';
   html += "    <h4>Dosing (Educational Only)</h4>";
-  html += "    <p><strong>Standard order example:</strong> " +
-    escapeHtml(standardDose) + "</p>";
-  html += '    <p class="muted">Exact mg/kg dosing should be filled from a trusted reference when you build scenarios.</p>';
+  html +=
+    "    <p><strong>Standard order example:</strong> " +
+    escapeHtml(standardDose) +
+    "</p>";
+  html +=
+    '    <p class="muted">Exact mg/kg dosing should be filled from a trusted reference when you build scenarios.</p>';
   html += "  </section>";
 
   html += "</div>";

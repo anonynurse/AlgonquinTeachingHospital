@@ -172,8 +172,9 @@ function renderPatientList() {
       <td>${p.allergies}</td>
     `;
 
+    // NEW BEHAVIOUR: just create/open tab, don't switch view
     tr.addEventListener("click", () => {
-      openPatientTab(p.patientNumber);
+      openPatientTab(p.patientNumber); // ensures tab exists, no activate
     });
 
     tbody.appendChild(tr);
@@ -207,6 +208,7 @@ function openPatientTab(patientNumber) {
         e.stopPropagation();
         closePatientTab(patientNumber);
       } else {
+        // Clicking the tab itself activates the chart
         activatePatientTab(patientNumber);
       }
     });
@@ -215,7 +217,10 @@ function openPatientTab(patientNumber) {
     openPatientTabs.set(patientNumber, tabEl);
   }
 
-  activatePatientTab(patientNumber);
+  // IMPORTANT CHANGE:
+  // We NO LONGER call activatePatientTab(patientNumber) here.
+  // So clicking a patient row just opens/ensures the tab exists,
+  // but does not switch the active view.
 }
 
 function activatePatientTab(patientNumber) {

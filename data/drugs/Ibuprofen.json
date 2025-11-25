@@ -1,0 +1,36 @@
+{
+  "name": "Ibuprofen",
+  "class": "Nonsteroidal anti-inflammatory drug (NSAID)",
+  "cautions": [
+    "Avoid in patients with NSAID- or aspirin-induced asthma, urticaria, or anaphylaxis.",
+    "Use cautiously in renal impairment, dehydration, heart failure, cirrhosis, or conditions reducing renal perfusion.",
+    "Increased risk of GI irritation, ulceration, and bleeding, especially with prolonged use or concomitant anticoagulants, steroids, or alcohol.",
+    "Avoid or use cautiously in late pregnancy; NSAIDs may cause fetal/neonatal renal issues and premature closure of the ductus arteriosus.",
+    "Caution in patients with uncontrolled hypertension or cardiovascular disease due to potential fluid retention and BP elevation.",
+    "May mask signs of infection (fever, inflammation)."
+  ],
+  "compatibility": {
+    "oral": "Oral tablets/solution may be given with food or milk to decrease gastrointestinal upset.",
+    "iv": "IV ibuprofen formulations are typically diluted in NS or D5W per manufacturer instructions; Y-site compatibility depends on co-infused drug and should be checked in institutional references.",
+    "other": "Do not mix oral suspension with large volumes of other liquids for storage."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., mg/kg PO every 6–8 hours with a maximum daily mg/kg limit).",
+  "dosingNotes": "Enter pediatric and adult mg/kg/day and typical single-dose regimens based on your local guidelines (e.g., PO q6h PRN pain/fever). Ensure daily maximum does not exceed reference limits.",
+  "indications": [
+    "Mild to moderate pain (e.g., musculoskeletal pain, dental pain).",
+    "Fever reduction.",
+    "Inflammatory conditions such as arthritis or soft tissue injuries."
+  ],
+  "sideEffects": [
+    "GI upset (nausea, dyspepsia, abdominal pain)",
+    "Headache, dizziness",
+    "Rash, pruritus",
+    "Edema, fluid retention",
+    "Elevated blood pressure",
+    "Renal function impairment with high doses, prolonged use, or dehydration",
+    "Rare: GI bleeding, ulceration, anaphylaxis, severe skin reactions"
+  ],
+  "summary": "Ibuprofen is an NSAID used for pain, inflammation, and fever. It works by inhibiting prostaglandin synthesis. Nursing considerations include GI protection, monitoring renal function and hydration status, assessing pain and temperature response, and checking for contraindications such as NSAID allergy, significant renal impairment, or late pregnancy."
+}

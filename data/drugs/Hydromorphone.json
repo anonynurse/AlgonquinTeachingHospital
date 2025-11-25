@@ -1,0 +1,39 @@
+{
+  "name": "Hydromorphone",
+  "class": "Opioid analgesic (semi-synthetic opioid)",
+  "cautions": [
+    "Use with extreme caution in respiratory compromise (e.g., acute asthma, COPD, OSA, severe pneumonia).",
+    "Risk of respiratory depression, especially in opioid-naïve patients, children, older adults, and those with comorbidities.",
+    "Caution in renal or hepatic impairment due to altered clearance and increased risk of accumulation.",
+    "Avoid or carefully monitor with other CNS depressants (benzodiazepines, alcohol, sedative-hypnotics).",
+    "May cause hypotension; use caution in hypovolemia or hemodynamic instability.",
+    "Risk of dependence, tolerance, and misuse; controlled substance.",
+    "Use caution in patients with increased intracranial pressure or head injury.",
+    "Adjust dose when converting from other opioids; hydromorphone is more potent than morphine mg-for-mg."
+  ],
+  "compatibility": {
+    "iv": "Generally compatible with normal saline (NS) and dextrose 5% in water (D5W). Y-site compatibility varies by co-infused drug; check institutional compatibility chart.",
+    "oral": "Swallow controlled-release tablets whole (do not crush); oral liquid may be mixed with a small amount of compatible fluid immediately before administration.",
+    "other": "Avoid mixing with solutions outside institutional standards without pharmacy verification."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., IV/PO starting dose based on age, opioid tolerance, and route).",
+  "dosingNotes": "For this education system, enter local guideline values for min/max mg/kg/day and a typical ordered regimen (e.g., IV q3–4h PRN severe pain). Always verify against a trusted drug reference.",
+  "indications": [
+    "Moderate to severe acute pain (e.g., post-operative).",
+    "Severe chronic pain requiring continuous opioid therapy when alternative treatments are inadequate.",
+    "Breakthrough pain in patients receiving baseline opioid therapy."
+  ],
+  "sideEffects": [
+    "Respiratory depression",
+    "Sedation, drowsiness, dizziness",
+    "Nausea, vomiting, constipation",
+    "Hypotension, orthostatic hypotension",
+    "Pruritus, sweating",
+    "Urinary retention",
+    "Tolerance, physical dependence, risk of misuse",
+    "Rare: bronchospasm, anaphylactoid reactions"
+  ],
+  "summary": "Hydromorphone is a potent opioid analgesic used for moderate to severe pain. Compared to morphine, it is more potent on a milligram basis, so dose conversions must be done carefully. Main nursing concerns are respiratory depression, oversedation, hypotension, constipation, and safe titration based on pain scores and patient response."
+}

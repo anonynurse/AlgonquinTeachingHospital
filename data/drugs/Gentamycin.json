@@ -1,0 +1,33 @@
+{
+  "name": "Gentamicin",
+  "class": "Aminoglycoside antibiotic",
+  "cautions": [
+    "Nephrotoxic and ototoxic; risk increases with higher doses, prolonged therapy, and concurrent nephrotoxic drugs (e.g., vancomycin, NSAIDs, contrast dye).",
+    "Monitor renal function closely (serum creatinine, urine output) and adjust dose based on renal function and serum levels per institutional protocol.",
+    "Ototoxicity may present as hearing loss, tinnitus, or vestibular symptoms; risk may be irreversible.",
+    "Use with caution in neuromuscular disorders (e.g., myasthenia gravis) due to potential neuromuscular blockade.",
+    "Requires therapeutic drug monitoring (peak and/or trough levels) depending on dosing strategy (conventional vs extended interval).",
+    "Avoid concurrent use with other ototoxic drugs where possible."
+  ],
+  "compatibility": {
+    "iv": "Typically diluted in NS or D5W and infused over the recommended time. Y-site compatibility with other IV drugs must be confirmed using institutional compatibility charts.",
+    "im": "Can be given IM in some settings; ensure correct concentration and technique.",
+    "other": "Do not mix in the same syringe or IV bag with beta-lactam antibiotics; inactivation may occur if combined in solution."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., mg/kg IV once daily or divided doses, with adjustment for renal function and levels).",
+  "dosingNotes": "Gentamicin dosing is highly protocolized and depends on age, weight, renal function, and infection type. Enter your local extended-interval or conventional dosing algorithms and maximum daily mg/kg values. Always pair with therapeutic drug monitoring guidelines.",
+  "indications": [
+    "Serious gram-negative infections (e.g., sepsis, pneumonia, intra-abdominal infections) often in combination with other agents.",
+    "Synergistic therapy with beta-lactam or glycopeptide antibiotics for some gram-positive infections (e.g., certain endocarditis regimens)."
+  ],
+  "sideEffects": [
+    "Nephrotoxicity (acute kidney injury)",
+    "Ototoxicity (hearing loss, tinnitus, vestibular dysfunction)",
+    "Neuromuscular blockade (rare, but possible at high doses or with other neuromuscular blockers)",
+    "Injection site pain or irritation",
+    "Headache, nausea"
+  ],
+  "summary": "Gentamicin is an aminoglycoside used for serious gram-negative infections and for synergy in selected gram-positive infections. It has a narrow therapeutic index and requires careful dosing and monitoring of renal function and serum drug levels. Nursing care includes monitoring for changes in hearing or balance, tracking urine output and creatinine, and ensuring doses and levels are drawn according to protocol."
+}

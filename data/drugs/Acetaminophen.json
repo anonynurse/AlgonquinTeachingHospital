@@ -1,0 +1,31 @@
+{
+  "name": "Acetaminophen",
+  "class": "Analgesic and antipyretic (non-opioid)",
+  "cautions": [
+    "Use cautiously in hepatic impairment, chronic alcohol use, or malnutrition due to increased risk of hepatotoxicity.",
+    "Avoid exceeding total daily dose from all sources (including combination products).",
+    "Use caution when multiple caregivers may be dosing (risk of duplicate therapy).",
+    "Adjust dosing or frequency in severe renal impairment per institutional guidelines.",
+    "Be careful with fixed-dose combination products (e.g., with opioids or cold medications) to avoid total dose exceeding recommended maximum."
+  ],
+  "compatibility": {
+    "oral": "May be given with or without food. Liquid forms should be measured with an appropriate dosing device.",
+    "iv": "IV acetaminophen is usually given undiluted or per manufacturer instructions. Check compatibility with other IV medications before Y-site administration.",
+    "other": "Rectal suppositories are available in some settings; check local formulary."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., mg/kg PO/IV every 4–6 hours with a defined maximum daily mg/kg and absolute daily max).",
+  "dosingNotes": "For your training environment, enter local recommended pediatric and adult daily limits (mg/kg/day and maximum grams/day) and standard order sets (e.g., PO q4h PRN pain/fever). Exceeding safe limits can cause acute liver failure.",
+  "indications": [
+    "Mild to moderate pain (e.g., headache, musculoskeletal pain, post-operative pain).",
+    "Fever reduction."
+  ],
+  "sideEffects": [
+    "Generally well tolerated at therapeutic doses.",
+    "Nausea, vomiting, rash (less common).",
+    "Serious: hepatotoxicity with overdose or chronic supratherapeutic dosing.",
+    "Rare severe skin reactions (e.g., Stevens–Johnson syndrome)."
+  ],
+  "summary": "Acetaminophen is a first-line non-opioid analgesic and antipyretic. It lacks anti-inflammatory effects but is widely used because it is generally safe at recommended doses. The major risk is liver injury if total daily dose exceeds safe limits, especially in patients with pre-existing liver disease or alcohol use."
+}

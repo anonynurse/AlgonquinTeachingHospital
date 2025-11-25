@@ -1,0 +1,35 @@
+{
+  "name": "Cefazolin",
+  "class": "First-generation cephalosporin antibiotic",
+  "cautions": [
+    "Contraindicated in patients with a history of severe immediate hypersensitivity (e.g., anaphylaxis) to cefazolin or other cephalosporins.",
+    "Use with caution in patients with a history of severe penicillin allergy; cross-reactivity risk is low but not zero.",
+    "Adjust dose in renal impairment; cefazolin is primarily renally excreted.",
+    "Prolonged use may lead to overgrowth of non-susceptible organisms (e.g., C. difficile).",
+    "IV administration can cause phlebitis; monitor IV site.",
+    "Use caution in neonates and preterm infants; dosing and monitoring must follow pediatric guidelines."
+  ],
+  "compatibility": {
+    "iv": "Typically reconstituted and diluted in NS or D5W; compatible with common surgical prophylaxis infusions. Y-site compatibility must be confirmed with institutional references, especially when co-administered with other antibiotics.",
+    "im": "Can be given deep IM injection, often reconstituted with lidocaine for pain reduction per protocol.",
+    "other": "Avoid mixing with solutions containing calcium in the same line without verifying compatibility."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., mg/kg IV q8h or q6h depending on indication and renal function).",
+  "dosingNotes": "Fill in local mg/kg/day ranges and standard perioperative prophylaxis regimens (e.g., single pre-op dose and re-dosing intervals) according to your hospital policies and current antimicrobial guidelines.",
+  "indications": [
+    "Perioperative prophylaxis for many surgical procedures.",
+    "Skin and soft tissue infections due to susceptible organisms.",
+    "Bone and joint infections (e.g., osteomyelitis) caused by susceptible gram-positive organisms.",
+    "Certain bloodstream infections and endocarditis when organism is susceptible."
+  ],
+  "sideEffects": [
+    "Injection site pain, phlebitis",
+    "Rash, pruritus, urticaria",
+    "GI upset (nausea, vomiting, diarrhea)",
+    "Elevated liver enzymes",
+    "Rare: C. difficile–associated diarrhea, anaphylaxis, hematologic changes (e.g., eosinophilia, leukopenia)"
+  ],
+  "summary": "Cefazolin is a first-generation cephalosporin widely used for surgical prophylaxis and treatment of infections caused by susceptible gram-positive bacteria. Nursing care focuses on allergy assessment (including penicillin history), monitoring for signs of hypersensitivity or C. difficile infection, and watching IV sites for phlebitis or infiltration."
+}

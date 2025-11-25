@@ -1,0 +1,35 @@
+{
+  "name": "Clindamycin",
+  "class": "Lincosamide antibiotic",
+  "cautions": [
+    "Associated with Clostridioides difficile–associated diarrhea (CDAD); risk persists even after the drug is stopped.",
+    "Use cautiously in patients with a history of colitis, inflammatory bowel disease, or prior C. difficile infection.",
+    "Dose adjustment may be needed in severe hepatic impairment; monitor liver function with prolonged therapy.",
+    "Use with caution in neonates and very young infants; dosing and formulation should follow pediatric specialists and local guidelines.",
+    "IV formulation contains excipients that may be problematic in certain patient populations (check product monograph).",
+    "Consider local resistance patterns; clindamycin resistance can occur (e.g., inducible resistance in staphylococci)."
+  ],
+  "compatibility": {
+    "iv": "Typically diluted in NS or D5W and infused over recommended time. Y-site compatibility varies by co-administered drug; always check institutional compatibility charts.",
+    "oral": "Capsules and oral solution may be taken with a full glass of water to reduce esophageal irritation.",
+    "other": "Do not administer IV undiluted as a bolus; follow product and institutional guidelines for dilution and infusion rate."
+  },
+  "minSafeDoseMgPerKgPerDay": null,
+  "maxSafeDoseMgPerKgPerDay": null,
+  "standardDose": "TODO: set per institutional protocol (e.g., mg/kg/day divided q6–8h, route-specific).",
+  "dosingNotes": "Enter local recommended mg/kg/day range (divided doses) for pediatric and adult patients, and typical order examples (e.g., IV/PO q6–8h for skin/soft-tissue infections). Verify dosing with an updated antimicrobial reference.",
+  "indications": [
+    "Skin and soft tissue infections (including some MRSA, depending on local resistance).",
+    "Bone and joint infections (e.g., osteomyelitis) as part of targeted therapy.",
+    "Anaerobic infections, including intra-abdominal and pelvic infections (often in combination regimens).",
+    "Dental infections and aspiration pneumonia (depending on local guidelines)."
+  ],
+  "sideEffects": [
+    "Diarrhea, including risk of C. difficile–associated diarrhea",
+    "Abdominal pain, nausea, vomiting",
+    "Rash, pruritus, urticaria",
+    "Elevated liver enzymes",
+    "Rare: severe skin reactions (e.g., Stevens–Johnson syndrome), anaphylaxis"
+  ],
+  "summary": "Clindamycin is a lincosamide antibiotic used for gram-positive and anaerobic infections. A key nursing concern is the risk of C. difficile–associated diarrhea, so new or worsening diarrhea should be reported promptly. Evaluate infection response, monitor GI status, and watch for signs of hypersensitivity or hepatic dysfunction during therapy."
+}

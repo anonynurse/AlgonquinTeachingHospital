@@ -110,11 +110,28 @@
           </div>
         </div>
 
-        <!-- Drug Manual -->
-        <div id="view-drug-manual" class="view">
-          <h2>Drug Manual</h2>
-          <p>Drug reference content will go here.</p>
-        </div>
+<!-- Drug Manual -->
+<div id="view-drug-manual" class="view">
+  <h2>Drug Manual</h2>
+  <div class="drug-manual-layout">
+    <aside class="drug-list-panel">
+      <h3 class="drug-list-title">Drugs</h3>
+      <div id="drug-list" class="drug-list">
+        <!-- Populated by JS -->
+      </div>
+    </aside>
+
+    <section class="drug-detail-panel">
+      <div id="drug-tab-bar" class="drug-tab-bar">
+        <!-- Drug tabs injected here -->
+      </div>
+      <div id="drug-detail-content" class="drug-detail-content">
+        <p class="muted">Select a drug from the list on the left.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
 
         <!-- Patient Detail View -->
         <div id="view-patient-detail" class="view">

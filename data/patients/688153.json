@@ -1,0 +1,22 @@
+{
+  "patientNumber": "688153",
+  "demographics": {
+    "firstName": "Liam",
+    "lastName": "Smith",
+    "gender": "M",
+    "dateOfBirth": "1993-09-09",
+    "age": 32,
+    "weightKg": 56.3,
+    "allergies": "Sulfa",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

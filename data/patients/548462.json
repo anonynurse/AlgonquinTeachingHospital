@@ -1,0 +1,22 @@
+{
+  "patientNumber": "548462",
+  "demographics": {
+    "firstName": "Isabella",
+    "lastName": "Fortin",
+    "gender": "F",
+    "dateOfBirth": "2011-01-15",
+    "age": 14,
+    "weightKg": 97.8,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

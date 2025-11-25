@@ -1,0 +1,22 @@
+{
+  "patientNumber": "969634",
+  "demographics": {
+    "firstName": "Sophia",
+    "lastName": "Tremblay",
+    "gender": "F",
+    "dateOfBirth": "2008-11-14",
+    "age": 17,
+    "weightKg": 75.1,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

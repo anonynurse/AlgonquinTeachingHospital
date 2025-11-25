@@ -1,0 +1,22 @@
+{
+  "patientNumber": "839945",
+  "demographics": {
+    "firstName": "Sophia",
+    "lastName": "Clark",
+    "gender": "F",
+    "dateOfBirth": "1980-04-09",
+    "age": 45,
+    "weightKg": 78.6,
+    "allergies": "Penicillin",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

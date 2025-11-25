@@ -1,0 +1,22 @@
+{
+  "patientNumber": "678478",
+  "demographics": {
+    "firstName": "Lucas",
+    "lastName": "Clark",
+    "gender": "M",
+    "dateOfBirth": "1946-10-17",
+    "age": 79,
+    "weightKg": 71.9,
+    "allergies": "Penicillin",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

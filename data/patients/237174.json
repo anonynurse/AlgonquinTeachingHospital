@@ -1,0 +1,22 @@
+{
+  "patientNumber": "237174",
+  "demographics": {
+    "firstName": "Lucas",
+    "lastName": "Bernard",
+    "gender": "M",
+    "dateOfBirth": "1999-07-01",
+    "age": 26,
+    "weightKg": 128.8,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

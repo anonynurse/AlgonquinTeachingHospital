@@ -1,0 +1,22 @@
+{
+  "patientNumber": "390120",
+  "demographics": {
+    "firstName": "Isabella",
+    "lastName": "Walker",
+    "gender": "F",
+    "dateOfBirth": "2014-11-21",
+    "age": 11,
+    "weightKg": 49.5,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

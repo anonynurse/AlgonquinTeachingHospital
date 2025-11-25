@@ -1,0 +1,22 @@
+{
+  "patientNumber": "563298",
+  "demographics": {
+    "firstName": "Lucas",
+    "lastName": "Tremblay",
+    "gender": "M",
+    "dateOfBirth": "1948-04-19",
+    "age": 77,
+    "weightKg": 95.5,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

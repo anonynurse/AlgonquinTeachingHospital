@@ -1,0 +1,22 @@
+{
+  "patientNumber": "374680",
+  "demographics": {
+    "firstName": "Charlotte",
+    "lastName": "Cote",
+    "gender": "F",
+    "dateOfBirth": "1983-04-02",
+    "age": 42,
+    "weightKg": 94.2,
+    "allergies": "Sulfa",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

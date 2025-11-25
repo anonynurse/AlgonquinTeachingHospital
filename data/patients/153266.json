@@ -1,0 +1,22 @@
+{
+  "patientNumber": "153266",
+  "demographics": {
+    "firstName": "Olivia",
+    "lastName": "Johnson",
+    "gender": "F",
+    "dateOfBirth": "1950-04-19",
+    "age": 75,
+    "weightKg": 63.7,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

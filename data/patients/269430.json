@@ -1,0 +1,22 @@
+{
+  "patientNumber": "269430",
+  "demographics": {
+    "firstName": "Daniel",
+    "lastName": "Fortin",
+    "gender": "M",
+    "dateOfBirth": "2013-01-19",
+    "age": 12,
+    "weightKg": 85.5,
+    "allergies": "Sulfa",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

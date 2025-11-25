@@ -1,0 +1,22 @@
+{
+  "patientNumber": "103717",
+  "demographics": {
+    "firstName": "Charlotte",
+    "lastName": "Patel",
+    "gender": "F",
+    "dateOfBirth": "1997-05-15",
+    "age": 28,
+    "weightKg": 66.2,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "patientNumber": "629959",
+  "demographics": {
+    "firstName": "Liam",
+    "lastName": "Walker",
+    "gender": "M",
+    "dateOfBirth": "1958-02-25",
+    "age": 67,
+    "weightKg": 90.3,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

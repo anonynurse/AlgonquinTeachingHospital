@@ -1,0 +1,22 @@
+{
+  "patientNumber": "449759",
+  "demographics": {
+    "firstName": "Benjamin",
+    "lastName": "Smith",
+    "gender": "M",
+    "dateOfBirth": "2008-01-21",
+    "age": 17,
+    "weightKg": 129.9,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

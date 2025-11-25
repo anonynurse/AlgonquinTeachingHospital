@@ -1,0 +1,22 @@
+{
+  "patientNumber": "765095",
+  "demographics": {
+    "firstName": "Emma",
+    "lastName": "Brown",
+    "gender": "F",
+    "dateOfBirth": "1990-05-22",
+    "age": 35,
+    "weightKg": 86.3,
+    "allergies": "Penicillin",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

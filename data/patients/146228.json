@@ -1,0 +1,22 @@
+{
+  "patientNumber": "146228",
+  "demographics": {
+    "firstName": "James",
+    "lastName": "Nguyen",
+    "gender": "M",
+    "dateOfBirth": "1977-02-08",
+    "age": 48,
+    "weightKg": 61.3,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

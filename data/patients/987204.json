@@ -1,0 +1,22 @@
+{
+  "patientNumber": "987204",
+  "demographics": {
+    "firstName": "Isabella",
+    "lastName": "Brown",
+    "gender": "F",
+    "dateOfBirth": "1963-02-08",
+    "age": 62,
+    "weightKg": 64.1,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

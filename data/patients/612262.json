@@ -1,0 +1,22 @@
+{
+  "patientNumber": "612262",
+  "demographics": {
+    "firstName": "Noah",
+    "lastName": "Clark",
+    "gender": "M",
+    "dateOfBirth": "1960-09-06",
+    "age": 65,
+    "weightKg": 67.5,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

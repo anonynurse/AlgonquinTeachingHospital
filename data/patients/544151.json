@@ -1,0 +1,22 @@
+{
+  "patientNumber": "544151",
+  "demographics": {
+    "firstName": "Daniel",
+    "lastName": "Johnson",
+    "gender": "M",
+    "dateOfBirth": "1947-08-08",
+    "age": 78,
+    "weightKg": 111.7,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

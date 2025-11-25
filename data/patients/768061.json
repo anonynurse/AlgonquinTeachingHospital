@@ -1,0 +1,22 @@
+{
+  "patientNumber": "768061",
+  "demographics": {
+    "firstName": "Isabella",
+    "lastName": "Lavoie",
+    "gender": "F",
+    "dateOfBirth": "1966-12-31",
+    "age": 58,
+    "weightKg": 107.1,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

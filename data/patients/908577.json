@@ -1,0 +1,22 @@
+{
+  "patientNumber": "908577",
+  "demographics": {
+    "firstName": "Liam",
+    "lastName": "Young",
+    "gender": "M",
+    "dateOfBirth": "1990-03-14",
+    "age": 35,
+    "weightKg": 86.3,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

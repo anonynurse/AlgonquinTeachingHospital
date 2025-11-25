@@ -1,0 +1,22 @@
+{
+  "patientNumber": "877236",
+  "demographics": {
+    "firstName": "James",
+    "lastName": "Brown",
+    "gender": "M",
+    "dateOfBirth": "2010-03-03",
+    "age": 15,
+    "weightKg": 95.6,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

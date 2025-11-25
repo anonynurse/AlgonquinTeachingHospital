@@ -1,0 +1,22 @@
+{
+  "patientNumber": "363319",
+  "demographics": {
+    "firstName": "Sophia",
+    "lastName": "Smith",
+    "gender": "F",
+    "dateOfBirth": "1995-12-10",
+    "age": 29,
+    "weightKg": 78.9,
+    "allergies": "Penicillin",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

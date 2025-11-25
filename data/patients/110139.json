@@ -1,0 +1,22 @@
+{
+  "patientNumber": "110139",
+  "demographics": {
+    "firstName": "Emma",
+    "lastName": "Gauthier",
+    "gender": "F",
+    "dateOfBirth": "1973-05-06",
+    "age": 52,
+    "weightKg": 82.2,
+    "allergies": "Penicillin",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

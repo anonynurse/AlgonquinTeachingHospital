@@ -1,0 +1,22 @@
+{
+  "patientNumber": "196781",
+  "demographics": {
+    "firstName": "Daniel",
+    "lastName": "Anderson",
+    "gender": "M",
+    "dateOfBirth": "2013-04-03",
+    "age": 12,
+    "weightKg": 122.0,
+    "allergies": "No Known Allergies",
+    "unit": "",
+    "room": ""
+  },
+  "diagnoses": [],
+  "orders": [],
+  "vitalsLog": [],
+  "assessments": [],
+  "medications": {
+    "activeOrders": [],
+    "mar": []
+  }
+}

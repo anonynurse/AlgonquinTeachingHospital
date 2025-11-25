@@ -1,8 +1,9 @@
 // js/app.js
 import { Auth } from "./auth.js";
 
-let patientsData = [];
-const openPatientTabs = new Map(); // patientNumber -> tab element
+let patientsData = [];                     // from patients.csv
+const openPatientTabs = new Map();         // patientNumber -> tab element
+const patientCharts = new Map();           // patientNumber -> full chart JSON
 
 document.addEventListener("DOMContentLoaded", () => {
   Auth.init();
@@ -52,7 +53,7 @@ function setupNav() {
       navTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
 
-      const viewName = tab.dataset.view; // e.g. "brain" or "patient-list" etc.
+      const viewName = tab.dataset.view; // e.g. "brain" or "patient-list"
       setActiveView(viewName);
     });
   });
@@ -172,9 +173,9 @@ function renderPatientList() {
       <td>${p.allergies}</td>
     `;
 
-    // NEW BEHAVIOUR: just create/open tab, don't switch view
+    // Behaviour: clicking a row just opens/ensures a tab, no auto-switch
     tr.addEventListener("click", () => {
-      openPatientTab(p.patientNumber); // ensures tab exists, no activate
+      openPatientTab(p.patientNumber);
     });
 
     tbody.appendChild(tr);
@@ -217,18 +218,10 @@ function openPatientTab(patientNumber) {
     openPatientTabs.set(patientNumber, tabEl);
   }
 
-  // IMPORTANT CHANGE:
-  // We NO LONGER call activatePatientTab(patientNumber) here.
-  // So clicking a patient row just opens/ensures the tab exists,
-  // but does not switch the active view.
+  // NOTE: We do NOT activate the tab here.
 }
 
 function activatePatientTab(patientNumber) {
-  const patient = patientsData.find(
-    (p) => p.patientNumber === patientNumber
-  );
-  if (!patient) return;
-
   // Highlight active patient tab
   for (const [id, el] of openPatientTabs.entries()) {
     if (id === patientNumber) {
@@ -238,9 +231,8 @@ function activatePatientTab(patientNumber) {
     }
   }
 
-  // Render patient detail and switch to its view
-  renderPatientDetail(patient);
-  setActiveView("patient-detail");
+  // Load chart JSON (or from cache) and render
+  loadAndRenderPatientChart(patientNumber);
 }
 
 function closePatientTab(patientNumber) {
@@ -265,40 +257,118 @@ function closePatientTab(patientNumber) {
   }
 }
 
+/* ---------- LOAD & RENDER PATIENT CHART ---------- */
+
+async function loadAndRenderPatientChart(patientNumber) {
+  const summaryRow = patientsData.find(
+    (p) => p.patientNumber === patientNumber
+  );
+
+  let chart = patientCharts.get(patientNumber);
+
+  if (!chart) {
+    try {
+      const res = await fetch(`data/patients/${patientNumber}.json`);
+      if (res.ok) {
+        chart = await res.json();
+      } else {
+        console.warn(
+          `No JSON chart found for patient ${patientNumber}, using CSV only.`
+        );
+        chart = buildFallbackChartFromCsv(summaryRow);
+      }
+    } catch (err) {
+      console.error("Error loading patient chart JSON", err);
+      chart = buildFallbackChartFromCsv(summaryRow);
+    }
+
+    patientCharts.set(patientNumber, chart);
+  }
+
+  renderPatientDetail(chart);
+  setActiveView("patient-detail");
+}
+
+function buildFallbackChartFromCsv(row) {
+  if (!row) return null;
+  return {
+    patientNumber: row.patientNumber,
+    demographics: {
+      firstName: row.firstName,
+      lastName: row.lastName,
+      gender: row.gender,
+      dateOfBirth: row.dob,
+      age: Number(row.age),
+      weightKg: Number(row.weight),
+      allergies: row.allergies,
+      unit: "",
+      room: ""
+    },
+    diagnoses: [],
+    orders: [],
+    vitalsLog: [],
+    assessments: [],
+    medications: { activeOrders: [], mar: [] }
+  };
+}
+
 /* ---------- PATIENT DETAIL RENDERING ---------- */
 
-function renderPatientDetail(patient) {
+function renderPatientDetail(chart) {
+  if (!chart) return;
+
   const container = document.getElementById("patient-detail-content");
   if (!container) return;
 
+  const d = chart.demographics || {};
+  const diagnoses = chart.diagnoses || [];
+  const primaryDx = diagnoses.length ? diagnoses[0].description : "N/A";
+
   container.innerHTML = `
     <section class="patient-banner">
-      <div class="patient-name">${patient.lastName.toUpperCase()}, ${patient.firstName}</div>
+      <div class="patient-name">${(d.lastName || "").toUpperCase()}, ${d.firstName || ""}</div>
       <div class="patient-meta">
-        <span>Patient # ${patient.patientNumber}</span>
-        <span>Gender: ${patient.gender}</span>
+        <span>Patient # ${chart.patientNumber || ""}</span>
+        ${d.gender ? `<span>Gender: ${d.gender}</span>` : ""}
+        ${d.unit ? `<span>Unit: ${d.unit}</span>` : ""}
+        ${d.room ? `<span>Room: ${d.room}</span>` : ""}
       </div>
     </section>
 
     <section class="patient-info-grid">
       <div class="info-item">
         <div class="info-label">Date of Birth</div>
-        <div class="info-value">${patient.dob}</div>
+        <div class="info-value">${d.dateOfBirth || ""}</div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Age</div>
-        <div class="info-value">${patient.age}</div>
+        <div class="info-value">${d.age ?? ""}</div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Weight</div>
-        <div class="info-value">${patient.weight} kg</div>
+        <div class="info-value">${d.weightKg != null ? d.weightKg + " kg" : ""}</div>
       </div>
 
       <div class="info-item">
         <div class="info-label">Allergies</div>
-        <div class="info-value">${patient.allergies}</div>
+        <div class="info-value">${d.allergies || "No Known Allergies"}</div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">Primary Diagnosis</div>
+        <div class="info-value">${primaryDx}</div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">Active Orders</div>
+        <div class="info-value">${(chart.orders || []).length}</div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">MAR Entries</div>
+        <div class="info-value">${(chart.medications?.mar || []).length}</div>
       </div>
     </section>
   `;

@@ -1,0 +1,8 @@
+[
+  { "id": "acetaminophen", "name": "Acetaminophen" },
+  { "id": "cefazolin", "name": "Cefazolin" },
+  { "id": "clindamycin", "name": "Clindamycin" },
+  { "id": "gentamicin", "name": "Gentamicin" },
+  { "id": "hydromorphone", "name": "Hydromorphone" },
+  { "id": "ibuprofen", "name": "Ibuprofen" }
+]

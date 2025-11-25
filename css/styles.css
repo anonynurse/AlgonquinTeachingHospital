@@ -155,13 +155,37 @@ button {
   background: var(--bg);
 }
 
+/* BRAND BAR ABOVE TABS */
+.app-brand-bar {
+  background: #006041; /* RGB(0,96,65) */
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-logo {
+  height: 28px;
+  width: auto;
+}
+
+.brand-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
 /* TOP NAV (PRIMARY TABS) */
 .top-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 1rem;
-  background: #111827;
+  background: #006041; /* RGB(0,96,65) */
   color: #e5e7eb;
 }
 
@@ -197,8 +221,8 @@ button {
 
 /* SECONDARY NAV (PATIENT TABS) */
 .secondary-nav {
-  background: #020617;
-  border-bottom: 1px solid #111827;
+  background: #005338; /* darker green strip under main nav */
+  border-bottom: 1px solid #003522;
   padding: 0.2rem 0.6rem;
 }
 
@@ -225,7 +249,7 @@ button {
   gap: 0.35rem;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background: #1e293b;
+  background: #00422c;
   color: #e5e7eb;
   font-size: 0.8rem;
   white-space: nowrap;
@@ -319,7 +343,7 @@ button {
 }
 
 .patient-banner {
-  background: #0f172a;
+  background: #006041;
   color: #e5e7eb;
   padding: 0.75rem 1rem;
   border-radius: 10px;
@@ -338,7 +362,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  color: #9ca3af;
+  color: #d1d5db;
 }
 
 .patient-info-grid {

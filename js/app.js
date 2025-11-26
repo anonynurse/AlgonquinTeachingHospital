@@ -30,8 +30,8 @@ var openPatientTabs = [];
 
 // Drug library
 var drugsList = [];      // from data/drugs/drugs.json
-var drugDetails = {};    // id -> full JSON
-var openDrugTabs = [];   // array of { id, element }
+var drugDetails = {};    // (kept for future if needed)
+var selectedDrugId = null;   // currently selected drug ID
 
 /* =========================
    UTILITIES

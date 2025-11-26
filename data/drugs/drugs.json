@@ -1,8 +1,162 @@
 [
-  { "id": "acetaminophen", "name": "Acetaminophen" },
-  { "id": "cefazolin", "name": "Cefazolin" },
-  { "id": "clindamycin", "name": "Clindamycin" },
-  { "id": "gentamicin", "name": "Gentamicin" },
-  { "id": "hydromorphone", "name": "Hydromorphone" },
-  { "id": "ibuprofen", "name": "Ibuprofen" }
+  {
+    "id": "acetaminophen",
+    "name": "Acetaminophen",
+    "class": "Non-opioid analgesic, antipyretic",
+    "summary": "Acetaminophen is a non-opioid analgesic and antipyretic used to treat mild to moderate pain and fever. It has minimal anti-inflammatory properties and is often used as a first-line analgesic in pediatrics.",
+    "indications": [
+      "Mild to moderate pain (e.g., headache, musculoskeletal pain)",
+      "Fever in pediatric and adult patients"
+    ],
+    "sideEffects": [
+      "Generally well tolerated at therapeutic doses",
+      "Hepatotoxicity with overdose or in severe liver disease",
+      "Rare skin reactions (e.g., rash)"
+    ],
+    "cautions": [
+      "Use cautiously in hepatic impairment",
+      "Avoid exceeding total daily dose from all sources (including combination products)",
+      "Monitor for unintentional overdose from multiple acetaminophen-containing products"
+    ],
+    "compatibility": {
+      "iv": "Check institutional IV compatibility guide; often compatible with common maintenance fluids.",
+      "oral": "Compatible with food; can be given with small amounts of fluid.",
+      "other": "Avoid excessive alcohol intake due to increased hepatotoxicity risk."
+    },
+    "standardDose": "10–15 mg/kg PO/PR Q4–6H PRN (maximum daily dose per institutional guideline)."
+  },
+  {
+    "id": "ibuprofen",
+    "name": "Ibuprofen",
+    "class": "NSAID (non-steroidal anti-inflammatory drug)",
+    "summary": "Ibuprofen is an NSAID used for pain with an inflammatory component and for fever. It works by inhibiting prostaglandin synthesis.",
+    "indications": [
+      "Mild to moderate pain with inflammatory component (e.g., musculoskeletal injuries)",
+      "Fever in pediatric and adult patients"
+    ],
+    "sideEffects": [
+      "Gastrointestinal upset (nausea, dyspepsia)",
+      "Risk of GI bleeding with prolonged use or high doses",
+      "Renal impairment in dehydration or pre-existing kidney disease"
+    ],
+    "cautions": [
+      "Avoid in significant renal impairment or dehydration",
+      "Use with caution in history of GI ulcer/bleeding",
+      "Avoid late in pregnancy unless specifically ordered"
+    ],
+    "compatibility": {
+      "iv": "Refer to institutional compatibility guidelines for IV formulations.",
+      "oral": "Give with food or milk to reduce GI upset.",
+      "other": "Avoid concurrent NSAIDs unless specifically directed."
+    },
+    "standardDose": "5–10 mg/kg PO Q6–8H PRN (maximum daily dose per institutional guideline)."
+  },
+  {
+    "id": "hydromorphone",
+    "name": "Hydromorphone",
+    "class": "Opioid analgesic",
+    "summary": "Hydromorphone is a strong opioid analgesic used to treat moderate to severe pain. It requires careful monitoring for sedation and respiratory depression.",
+    "indications": [
+      "Moderate to severe acute pain",
+      "Postoperative pain requiring opioid therapy"
+    ],
+    "sideEffects": [
+      "Sedation, dizziness",
+      "Respiratory depression",
+      "Nausea, vomiting, constipation",
+      "Hypotension, pruritus"
+    ],
+    "cautions": [
+      "Monitor respiratory rate, sedation score, and oxygen saturation",
+      "Use with caution in respiratory compromise (e.g., asthma, sleep apnea)",
+      "Avoid combination with other CNS depressants unless closely monitored"
+    ],
+    "compatibility": {
+      "iv": "Refer to institutional IV opioid compatibility chart.",
+      "oral": "Swallow oral forms as directed; do not crush controlled-release formulations.",
+      "other": "Use appropriate opioid lockout intervals with PCA devices."
+    },
+    "standardDose": "Example only: 0.01–0.02 mg/kg IV Q3–4H PRN (follow institutional protocol; not for real-world prescribing)."
+  },
+  {
+    "id": "clindamycin",
+    "name": "Clindamycin",
+    "class": "Lincosamide antibiotic",
+    "summary": "Clindamycin is an antibiotic with good activity against many Gram-positive organisms and anaerobes. It is often used for skin, soft tissue, and some ENT infections, including penicillin-allergic patients when appropriate.",
+    "indications": [
+      "Skin and soft tissue infections",
+      "Some ENT and dental infections",
+      "Treatment option in certain penicillin-allergic patients (per local guidelines)"
+    ],
+    "sideEffects": [
+      "Diarrhea, nausea, abdominal pain",
+      "Risk of C. difficile–associated diarrhea/colitis",
+      "Rash"
+    ],
+    "cautions": [
+      "Monitor for new-onset or worsening diarrhea",
+      "Use cautiously in patients with history of colitis",
+      "Ensure appropriate indication based on local resistance patterns"
+    ],
+    "compatibility": {
+      "iv": "Check IV compatibility guide; requires appropriate dilution and infusion rate.",
+      "oral": "Can be given with or without food; may reduce GI upset if taken with food.",
+      "other": "Educate families to report significant diarrhea promptly."
+    },
+    "standardDose": "Dose and frequency depend on infection type and route; follow institutional pediatric guideline."
+  },
+  {
+    "id": "cefazolin",
+    "name": "Cefazolin",
+    "class": "First-generation cephalosporin antibiotic",
+    "summary": "Cefazolin is a first-generation cephalosporin commonly used for skin, soft tissue, and some surgical prophylaxis indications. It covers many Gram-positive organisms.",
+    "indications": [
+      "Skin and soft tissue infections",
+      "Perioperative surgical prophylaxis",
+      "Selected bone and joint infections (per protocol)"
+    ],
+    "sideEffects": [
+      "Injection site pain",
+      "Rash, allergic reactions",
+      "GI upset (nausea, diarrhea)"
+    ],
+    "cautions": [
+      "Use with caution in patients with serious penicillin allergy (cross-reactivity possible)",
+      "Monitor for hypersensitivity reactions",
+      "Adjust dosing in renal impairment"
+    ],
+    "compatibility": {
+      "iv": "Refer to institutional IV antibiotic compatibility chart.",
+      "oral": "Not typically used orally; primarily IV.",
+      "other": "Verify timing if given in relation to surgery for prophylaxis."
+    },
+    "standardDose": "Typical pediatric IV dosing is weight-based; follow institutional guideline for mg/kg and frequency."
+  },
+  {
+    "id": "gentamicin",
+    "name": "Gentamicin",
+    "class": "Aminoglycoside antibiotic",
+    "summary": "Gentamicin is an aminoglycoside antibiotic used for serious Gram-negative infections and in combination regimens. It requires therapeutic drug monitoring due to nephrotoxicity and ototoxicity risk.",
+    "indications": [
+      "Serious Gram-negative infections",
+      "Combination therapy for certain neonatal or complicated infections",
+      "Empiric sepsis regimens (per protocol)"
+    ],
+    "sideEffects": [
+      "Nephrotoxicity (kidney injury)",
+      "Ototoxicity (hearing or vestibular damage)",
+      "Injection site pain"
+    ],
+    "cautions": [
+      "Requires careful dosing and level monitoring (peaks/troughs or AUC per protocol)",
+      "Adjust dose and interval in renal impairment",
+      "Avoid concurrent nephrotoxic drugs when possible"
+    ],
+    "compatibility": {
+      "iv": "Check IV compatibility; may be incompatible with some beta-lactams in same line.",
+      "oral": "Not used orally for systemic effect.",
+      "other": "Ensure families understand that hearing tests or level monitoring may be required."
+    },
+    "standardDose": "Weight-based IV dosing with intervals based on age and renal function; follow institutional protocol."
+  }
 ]

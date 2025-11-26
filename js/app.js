@@ -745,7 +745,7 @@ function refreshBrainAssignedList() {
 }
 
 /* =========================
-   DRUG MANUAL
+   DRUG MANUAL (SINGLE FILE)
    ========================= */
 
 function loadDrugs() {
@@ -862,7 +862,7 @@ function activateDrugTab(drugId) {
       entry.element.classList.remove("active");
     }
   }
-  loadAndRenderDrug(drugId);
+  renderDrugDetailById(drugId);
 }
 
 function closeDrugTab(drugId) {
@@ -894,30 +894,19 @@ function closeDrugTab(drugId) {
   }
 }
 
-function loadAndRenderDrug(drugId) {
-  var cached = drugDetails[drugId];
-  if (cached) {
-    renderDrugDetail(cached);
+function renderDrugDetailById(drugId) {
+  var drug = null;
+  for (var i = 0; i < drugsList.length; i++) {
+    if (drugsList[i].id === drugId) {
+      drug = drugsList[i];
+      break;
+    }
+  }
+  if (!drug) {
+    console.warn("Drug not found:", drugId);
     return;
   }
-
-  if (!window.fetch) {
-    console.warn("fetch() not available; cannot load drug details.");
-    return;
-  }
-
-  fetch("data/drugs/" + drugId + ".json")
-    .then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    })
-    .then(function (json) {
-      drugDetails[drugId] = json;
-      renderDrugDetail(json);
-    })
-    .catch(function (err) {
-      console.error("Error loading drug file:", err);
-    });
+  renderDrugDetail(drug);
 }
 
 function renderDrugDetail(drug) {
@@ -1007,10 +996,11 @@ function renderDrugDetail(drug) {
     escapeHtml(standardDose) +
     "</p>";
   html +=
-    '    <p class="muted">Exact mg/kg dosing should be filled from a trusted reference when you build scenarios.</p>';
+    '    <p class="muted">This information is for simulation and teaching only. Real-world prescribing must follow institutional protocols and references.</p>';
   html += "  </section>";
 
   html += "</div>";
 
   container.innerHTML = html;
 }
+

@@ -745,7 +745,7 @@ function refreshBrainAssignedList() {
 }
 
 /* =========================
-   DRUG MANUAL (SINGLE FILE)
+   DRUG MANUAL (NO TABS)
    ========================= */
 
 function loadDrugs() {
@@ -799,99 +799,33 @@ function renderDrugList() {
   var buttons = container.querySelectorAll(".drug-list-item");
   for (var j = 0; j < buttons.length; j++) {
     (function (btn) {
-      var id = btn.getAttribute("data-drug-id");
       btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-drug-id");
         if (!id) return;
-        openDrugTab(id);
-        activateDrugTab(id);
+        selectDrug(id);
       });
     })(buttons[j]);
   }
 }
 
-function findDrugTabIndex(id) {
-  for (var i = 0; i < openDrugTabs.length; i++) {
-    if (openDrugTabs[i].id === id) return i;
-  }
-  return -1;
-}
+function selectDrug(drugId) {
+  selectedDrugId = drugId;
 
-function openDrugTab(drugId) {
-  var drug = null;
-  for (var i = 0; i < drugsList.length; i++) {
-    if (drugsList[i].id === drugId) {
-      drug = drugsList[i];
-      break;
-    }
-  }
-  if (!drug) return;
-
-  var tabBar = document.getElementById("drug-tab-bar");
-  if (!tabBar) return;
-
-  if (findDrugTabIndex(drugId) === -1) {
-    var tabEl = document.createElement("button");
-    tabEl.className = "drug-tab";
-    tabEl.setAttribute("data-drug-id", drugId);
-    tabEl.innerHTML =
-      '<span class="drug-tab-label">' + escapeHtml(drug.name) + "</span>" +
-      '<span class="drug-tab-close" aria-label="Close tab">&times;</span>';
-
-    tabEl.addEventListener("click", function (e) {
-      var target = e.target || e.srcElement;
-      if (target && target.classList && target.classList.contains("drug-tab-close")) {
-        e.stopPropagation();
-        closeDrugTab(drugId);
+  // Highlight the selected button in the list
+  var container = document.getElementById("drug-list");
+  if (container) {
+    var buttons = container.querySelectorAll(".drug-list-item");
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      if (btn.getAttribute("data-drug-id") === drugId) {
+        btn.classList.add("active");
       } else {
-        activateDrugTab(drugId);
+        btn.classList.remove("active");
       }
-    });
-
-    tabBar.appendChild(tabEl);
-    openDrugTabs.push({ id: drugId, element: tabEl });
-  }
-}
-
-function activateDrugTab(drugId) {
-  for (var i = 0; i < openDrugTabs.length; i++) {
-    var entry = openDrugTabs[i];
-    if (!entry || !entry.element) continue;
-    if (entry.id === drugId) {
-      entry.element.classList.add("active");
-    } else {
-      entry.element.classList.remove("active");
     }
   }
+
   renderDrugDetailById(drugId);
-}
-
-function closeDrugTab(drugId) {
-  var idx = findDrugTabIndex(drugId);
-  if (idx === -1) return;
-
-  var entry = openDrugTabs[idx];
-  var wasActive =
-    entry.element &&
-    entry.element.classList.contains("active");
-
-  if (entry.element && entry.element.parentNode) {
-    entry.element.parentNode.removeChild(entry.element);
-  }
-
-  openDrugTabs.splice(idx, 1);
-
-  var detail = document.getElementById("drug-detail-content");
-  if (!detail) return;
-
-  if (wasActive) {
-    if (openDrugTabs.length > 0) {
-      var last = openDrugTabs[openDrugTabs.length - 1];
-      activateDrugTab(last.id);
-    } else {
-      detail.innerHTML =
-        '<p class="muted">Select a drug from the list on the left.</p>';
-    }
-  }
 }
 
 function renderDrugDetailById(drugId) {
@@ -996,7 +930,7 @@ function renderDrugDetail(drug) {
     escapeHtml(standardDose) +
     "</p>";
   html +=
-    '    <p class="muted">This information is for simulation and teaching only. Real-world prescribing must follow institutional protocols and references.</p>';
+    '    <p class="muted">This information is for simulation and teaching only. Real prescribing must follow institutional protocols.</p>';
   html += "  </section>";
 
   html += "</div>";

@@ -603,3 +603,8 @@ button {
     flex-direction: column;
   }
 }
+
+.drug-list-item.active {
+  background-color: rgba(0, 96, 65, 0.12);
+  border-left: 4px solid rgb(0, 96, 65);
+}
